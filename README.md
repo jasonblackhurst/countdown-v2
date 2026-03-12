@@ -4,16 +4,16 @@ A cooperative card game based on [The Mind](https://boardgamegeek.com/boardgame/
 
 ## Status
 
-All three phases complete.
+All three phases complete and playable end-to-end.
 
 | Phase | Package | Status | Tests |
 |---|---|---|---|
 | 1 | `countdown_core` — game engine | ✅ Done | 13 |
 | 1 | `countdown_console` — bot simulation | ✅ Done | 2 |
-| 2 | `countdown_server` — WebSocket backend | ✅ Done | 13 |
-| 3 | `countdown_flutter` — cross-platform client | ✅ Done | 16 |
+| 2 | `countdown_server` — WebSocket backend | ✅ Done | 17 |
+| 3 | `countdown_flutter` — cross-platform client | ✅ Done | 17 |
 
-**44 tests total, all passing.**
+**49 tests total, all passing.**
 
 ## Project Structure
 
@@ -37,20 +37,33 @@ dart run bin/server.dart
 # Countdown server listening on ws://localhost:8080/ws
 ```
 
-### 2. Run the Flutter app
+### 2. Play in the browser (recommended for multi-player on one machine)
 
 ```bash
 cd apps/countdown_flutter
-flutter run -d macos      # or -d chrome, -d ios, etc.
+flutter build web
+python3 -m http.server 8081 --directory build/web
+# open http://localhost:8081 in multiple windows
 ```
 
-Two players open the app on separate devices (or windows), one taps **Create Room**, shares the 4-letter code, the other taps **Join Room**. The host taps **Start Game**, everyone votes on card count, and you play.
+Open three browser windows at `http://localhost:8081`:
+- **Window 1**: tap **Create Room**, note the 4-letter code
+- **Windows 2 & 3**: tap **Join Room**, enter the code and a name
+- **Window 1 (host)**: tap **Start Game** once all players appear
+- All players vote on cards per player → round begins → tap cards to play
 
-### 3. Pile viewer mode
+### 3. Run the Flutter app natively (macOS)
 
-A third device can join as a read-only pile viewer — large-format display of the last played card, suited for a shared screen. Set `pileViewerMode: true` in `CountdownApp`.
+```bash
+cd apps/countdown_flutter
+flutter run -d macos
+```
 
-### 4. Bot simulation (no server needed)
+### 4. Pile viewer mode
+
+A device can join as a read-only full-screen pile viewer (no hand, no play button). Set `pileViewerMode: true` in `CountdownApp` — useful for a shared display showing the last played card.
+
+### 5. Bot simulation (no server needed)
 
 ```bash
 cd packages/countdown_console
@@ -70,17 +83,10 @@ dart run bin/countdown_console.dart fallible   # loses lives — tests game-over
 ## Running Tests
 
 ```bash
-# Game engine
-cd packages/countdown_core && dart test
-
-# Bot simulation
+cd packages/countdown_core    && dart test
 cd packages/countdown_console && dart test
-
-# WebSocket server
-cd apps/countdown_server && dart test
-
-# Flutter client
-cd apps/countdown_flutter && flutter test
+cd apps/countdown_server      && dart test
+cd apps/countdown_flutter     && flutter test
 ```
 
 ## Architecture
@@ -99,8 +105,8 @@ Imported as a path dependency by both the server and the Flutter app.
 
 Dart + `shelf` + `shelf_web_socket`. Responsibilities:
 
-- `RoomManager` — creates rooms with unique 4-char codes
-- `Room` — holds connected WebSocket sinks, maps UUIDs ↔ engine player IDs, runs card-count voting, broadcasts `state_update` snapshots after every state change
+- `RoomManager` — creates rooms with unique 4-char codes; removes empty rooms on disconnect
+- `Room` — holds connected WebSocket sinks, maps UUIDs ↔ engine player IDs, runs card-count voting, broadcasts personalized `state_update` snapshots (each player sees their own hand values, others get `[]`). Broadcasts a pre-game lobby snapshot on every `addPlayer` so the player list updates live. Resets phase to `lobby` after all hands are empty so players can vote for the next round.
 - `Protocol` — sealed `ClientMessage` types; JSON serialisers for server→client messages
 - Server is **authoritative** — validates every `play_card` server-side, never trusts clients
 
@@ -117,9 +123,17 @@ Flutter targeting iOS, Android, macOS, Windows, Linux, Web.
 | Screen | Description |
 |---|---|
 | `HomeScreen` | Create or join a room |
-| `LobbyScreen` | Wait for players; host starts game; all players vote on card count per round |
+| `LobbyScreen` | Shows live player list as people join; host starts game; all players vote on card count per round (and between rounds) |
 | `GameScreen` | Hand grid (tap to play), lives indicator, last played card, round info, win/lose banners |
 | `PileScreen` | Read-only full-screen last-played card display for a dedicated pile-viewer device |
+
+### LobbyScreen state logic
+
+| `phase` | `roundNumber` | What shows |
+|---|---|---|
+| `lobby` | 0 | Player list + **Start Game** button |
+| `lobby` | > 0 | Player list + vote chips (between rounds) |
+| `round` | any | Player list + vote chips (mid-round, shouldn't normally occur) |
 
 ## WebSocket Protocol
 
@@ -151,4 +165,4 @@ Flutter targeting iOS, Android, macOS, Windows, Linux, Web.
 {"type": "error", "message": "Room ZZZZ not found"}
 ```
 
-Each player only receives their own hand values in the `hand` array; other players' `hand` arrays are empty.
+Each player only receives their own hand values in the `hand` array; other players' `hand` arrays are always empty. The pre-game lobby snapshot uses the same `state_update` shape with `phase: "lobby"` and `hand_size: 0`.
