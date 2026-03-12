@@ -246,5 +246,73 @@ void main() {
       room.playCard(roomPlayerId, wrongCard);
       expect(room.state.lives, 4);
     });
+
+    test('14. state_update includes hand values for the receiving player only', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 2);
+      room.voteCardCount(ids[1], 2);
+
+      // Alice's state_update should contain her own hand values
+      final aliceUpdate = sinks[0].msgsOfType('state_update').last;
+      final alicePlayers = aliceUpdate['state']['players'] as List;
+      final aliceEntry = alicePlayers.firstWhere(
+        (p) => room.engineIdForPlayerId(ids[0]) == (p as Map)['id'],
+      ) as Map;
+      expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
+
+      // Alice's view of Bob should have an empty hand list
+      final bobEntry = alicePlayers.firstWhere(
+        (p) => room.engineIdForPlayerId(ids[1]) == (p as Map)['id'],
+      ) as Map;
+      expect(bobEntry['hand'], isEmpty);
+    });
+
+    test('15. after all hands are played, phase resets to lobby for re-voting', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      // Play both cards in the correct order (highest first)
+      final allCards = room.state.players
+          .expand((p) => p.hand.cards)
+          .toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      for (final card in allCards) {
+        final engineHolder = room.state.players
+            .firstWhere((p) => p.hand.cards.contains(card));
+        final roomId = room.playerIdForEngineId(engineHolder.id)!;
+        room.playCard(roomId, card);
+      }
+
+      expect(room.state.phase, GamePhase.lobby);
+    });
+
+    test('16. removePlayer on last player returns isEmpty true', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.removePlayer(ids[0]);
+      room.removePlayer(ids[1]);
+      expect(room.isEmpty, isTrue);
+    });
   });
 }

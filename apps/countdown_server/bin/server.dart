@@ -41,7 +41,11 @@ void _onConnection(WebSocketChannel ws) {
       final rc = roomCode;
       final pid = playerId;
       if (rc != null && pid != null) {
-        _rooms.getRoom(rc)?.removePlayer(pid);
+        final room = _rooms.getRoom(rc);
+        if (room != null) {
+          room.removePlayer(pid);
+          if (room.isEmpty) _rooms.removeRoom(rc);
+        }
       }
     },
   );

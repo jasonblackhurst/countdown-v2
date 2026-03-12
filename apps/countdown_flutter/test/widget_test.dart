@@ -228,6 +228,34 @@ void main() {
     });
   });
 
+  group('LobbyScreen between-rounds', () {
+    testWidgets('17. shows vote chips (not Start Game) when roundNumber > 0 and phase is lobby', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(jsonEncode(
+          {'type': 'room_created', 'room_code': 'ABCD', 'player_id': 'p1'}));
+      // phase=lobby but roundNumber=1 → between rounds
+      ctrl.add(jsonEncode(_stateUpdate(
+        phase: 'lobby',
+        roundNumber: 1,
+        players: [
+          {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+          {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+        ],
+      )));
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Start Game'), findsNothing);
+      expect(find.text('Confirm Vote'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+  });
+
   group('GameScreen', () {
     testWidgets('16. shows lives, round number, and hand cards', (tester) async {
       final client = GameClient();

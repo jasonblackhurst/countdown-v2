@@ -18,7 +18,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
   Widget build(BuildContext context) {
     final state = widget.client.state;
     final players = state.players ?? [];
+    final gameStarted = (state.roundNumber ?? 0) > 0;
     final isRound = state.phase == GamePhase.round;
+    // Show vote UI during an active round OR between rounds (lobby after round 1+)
+    final showVote = isRound || gameStarted;
 
     return Scaffold(
       appBar: AppBar(
@@ -56,7 +59,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            if (!isRound) ...[
+            if (!showVote) ...[
               FilledButton(
                 onPressed: players.length >= 2
                     ? () => widget.client.startGame()

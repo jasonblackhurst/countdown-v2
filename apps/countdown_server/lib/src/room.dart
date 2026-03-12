@@ -28,6 +28,7 @@ class Room {
 
   GameState get state => _engine.state;
   int get playerCount => _connections.length;
+  bool get isEmpty => _connections.isEmpty;
 
   String? playerIdForEngineId(String engineId) =>
       _engineIdToPlayerId[engineId];
@@ -88,6 +89,14 @@ class Room {
     if (engineId == null) throw StateError('Player not in engine: $playerId');
 
     final result = _engine.playCard(engineId, card);
+
+    // If the round ended cleanly (not win/gameOver), reset to lobby so
+    // clients know to vote for the next round.
+    if (result == PlayResult.valid &&
+        _engine.state.players.every((p) => p.hand.isEmpty)) {
+      _engine.state.phase = GamePhase.lobby;
+    }
+
     _broadcastState();
     return result;
   }
@@ -105,8 +114,12 @@ class Room {
   }
 
   void _broadcastState() {
-    final msg = encode(stateUpdateMsg(_engine.state));
     for (final conn in _connections) {
+      final engineId = _playerIdToEngineId[conn.playerId];
+      final msg = encode(stateUpdateMsg(
+        _engine.state,
+        localEnginePlayerId: engineId,
+      ));
       conn.sink.add(msg);
     }
   }
