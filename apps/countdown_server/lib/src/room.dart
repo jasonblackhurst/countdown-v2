@@ -43,6 +43,7 @@ class Room {
     _pendingPlayers[playerId] = name;
     _hostPlayerId ??= playerId;
     _connections.add(_ConnectedPlayer(playerId, sink));
+    _broadcastLobbyState();
     return playerId;
   }
 
@@ -111,6 +112,33 @@ class Room {
 
   void removePlayer(String playerId) {
     _connections.removeWhere((c) => c.playerId == playerId);
+  }
+
+  /// Sends a pre-game lobby snapshot — used before the engine is initialized.
+  void _broadcastLobbyState() {
+    final players = _connections
+        .map((c) => {
+              'id': c.playerId,
+              'name': _pendingPlayers[c.playerId] ?? '',
+              'hand_size': 0,
+              'hand': <int>[],
+            })
+        .toList();
+
+    final msg = encode({
+      'type': 'state_update',
+      'state': {
+        'phase': 'lobby',
+        'lives': 5,
+        'round_number': 0,
+        'discard_pile': <int>[],
+        'players': players,
+      },
+    });
+
+    for (final conn in _connections) {
+      conn.sink.add(msg);
+    }
   }
 
   void _broadcastState() {

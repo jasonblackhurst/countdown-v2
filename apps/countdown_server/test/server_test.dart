@@ -79,6 +79,22 @@ void main() {
   // ── Room – lobby & setup ──────────────────────────────────────────────────
 
   group('Room setup', () {
+    test('5a. addPlayer broadcasts lobby state_update to all existing players', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink1 = _RecordingSink();
+      room.addPlayer('Alice', sink1);
+
+      final sink2 = _RecordingSink();
+      room.addPlayer('Bob', sink2);
+
+      // Alice should have received a lobby update when Bob joined
+      final aliceUpdates = sink1.msgsOfType('state_update').toList();
+      expect(aliceUpdates, isNotEmpty);
+      final players = aliceUpdates.last['state']['players'] as List;
+      expect(players.map((p) => (p as Map)['name']), containsAll(['Alice', 'Bob']));
+    });
+
     test('5. addPlayer returns a player ID and accepts a sink', () {
       final manager = RoomManager();
       final room = manager.createRoom();
@@ -106,7 +122,7 @@ void main() {
       room.startGame(ids.first);
 
       for (final sink in sinks) {
-        expect(sink.msgsOfType('state_update'), hasLength(1));
+        expect(sink.msgsOfType('state_update').length, greaterThanOrEqualTo(1));
       }
     });
 
