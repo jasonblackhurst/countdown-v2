@@ -1,0 +1,250 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:countdown_core/countdown_core.dart';
+import 'package:countdown_server/src/room.dart';
+import 'package:countdown_server/src/room_manager.dart';
+import 'package:test/test.dart';
+
+// ── Stub sink for testing without real WebSockets ─────────────────────────
+
+class _RecordingSink implements StreamSink<String> {
+  final List<Map<String, dynamic>> received = [];
+  bool closed = false;
+
+  @override
+  void add(String event) => received.add(jsonDecode(event) as Map<String, dynamic>);
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future addStream(Stream<String> stream) async {}
+
+  @override
+  Future get done => Future.value();
+
+  @override
+  Future close() async => closed = true;
+
+  Map<String, dynamic>? lastMsg() => received.isEmpty ? null : received.last;
+
+  Iterable<Map<String, dynamic>> msgsOfType(String type) =>
+      received.where((m) => m['type'] == type);
+}
+
+// ── Helper ────────────────────────────────────────────────────────────────
+
+Room _startedRoom({int players = 2}) {
+  final manager = RoomManager();
+  final room = manager.createRoom();
+  final sinks = List.generate(players, (_) => _RecordingSink());
+  final ids = [
+    for (var i = 0; i < players; i++)
+      room.addPlayer('Player${i + 1}', sinks[i])
+  ];
+  room.startGame(ids.first); // host starts game
+  return room;
+}
+
+void main() {
+  // ── RoomManager ───────────────────────────────────────────────────────────
+
+  group('RoomManager', () {
+    test('1. createRoom generates a room with a 4-character code', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      expect(room.code, hasLength(4));
+      expect(room.code, matches(RegExp(r'^[A-Z]+$')));
+    });
+
+    test('2. createRoom codes are unique across multiple rooms', () {
+      final manager = RoomManager();
+      final codes = {for (var i = 0; i < 20; i++) manager.createRoom().code};
+      expect(codes.length, 20);
+    });
+
+    test('3. getRoom retrieves an existing room by code', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      expect(manager.getRoom(room.code), same(room));
+    });
+
+    test('4. getRoom returns null for unknown code', () {
+      final manager = RoomManager();
+      expect(manager.getRoom('ZZZZ'), isNull);
+    });
+  });
+
+  // ── Room – lobby & setup ──────────────────────────────────────────────────
+
+  group('Room setup', () {
+    test('5. addPlayer returns a player ID and accepts a sink', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink = _RecordingSink();
+      final id = room.addPlayer('Alice', sink);
+      expect(id, isNotEmpty);
+    });
+
+    test('6. startGame requires at least 2 players', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink = _RecordingSink();
+      final id = room.addPlayer('Alice', sink);
+      expect(() => room.startGame(id), throwsStateError);
+    });
+
+    test('7. startGame broadcasts state_update to all connected sinks', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      for (final sink in sinks) {
+        expect(sink.msgsOfType('state_update'), hasLength(1));
+      }
+    });
+
+    test('8. only the host can start the game', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      room.addPlayer('Alice', sinks[0]);
+      final bobId = room.addPlayer('Bob', sinks[1]);
+      expect(() => room.startGame(bobId), throwsStateError);
+    });
+  });
+
+  // ── Room – round voting ───────────────────────────────────────────────────
+
+  group('Room voting', () {
+    test('9. round starts when all players have voted', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      room.voteCardCount(ids[0], 2);
+      expect(room.state.phase, GamePhase.lobby); // not yet started
+
+      room.voteCardCount(ids[1], 2);
+      expect(room.state.phase, GamePhase.round); // round started
+    });
+
+    test('10. round uses the minimum of all votes', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      room.voteCardCount(ids[0], 5);
+      room.voteCardCount(ids[1], 2);
+
+      // Each player gets 2 cards (the min)
+      for (final p in room.state.players) {
+        expect(p.hand.cards.length, 2);
+      }
+    });
+
+    test('11. voteCardCount broadcasts state_update after round starts', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1); // triggers broadcast
+
+      for (final sink in sinks) {
+        // 1 from startGame + 1 from round start
+        expect(sink.msgsOfType('state_update').length, greaterThanOrEqualTo(2));
+      }
+    });
+  });
+
+  // ── Room – gameplay ───────────────────────────────────────────────────────
+
+  group('Room gameplay', () {
+    test('12. playing the correct card returns valid and broadcasts state', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      // Find who holds the globally highest card and play it
+      final highest = room.state.players
+          .expand((p) => p.hand.cards)
+          .reduce((a, b) => a.value > b.value ? a : b);
+      final holderId = room.state.players
+          .firstWhere((p) => p.hand.cards.contains(highest))
+          .id;
+
+      // Map engine player ID back to room player ID
+      final roomPlayerId = ids.firstWhere(
+        (id) => room.playerIdForEngineId(holderId) == id ||
+            room.engineIdForPlayerId(id) == holderId,
+      );
+
+      final result = room.playCard(roomPlayerId, highest);
+      expect(result, PlayResult.valid);
+
+      for (final sink in sinks) {
+        expect(sink.msgsOfType('state_update').length, greaterThanOrEqualTo(3));
+      }
+    });
+
+    test('13. playing wrong card decrements lives and broadcasts state', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 2);
+      room.voteCardCount(ids[1], 2);
+
+      // Find a player with a card that is NOT the global highest
+      final globalHighest = room.state.players
+          .expand((p) => p.hand.cards)
+          .reduce((a, b) => a.value > b.value ? a : b);
+
+      final wrongHolder = room.state.players.firstWhere(
+        (p) => p.hand.cards.any((c) => c != globalHighest),
+      );
+      final wrongCard =
+          wrongHolder.hand.cards.firstWhere((c) => c != globalHighest);
+
+      final roomPlayerId = ids.firstWhere(
+        (id) => room.engineIdForPlayerId(id) == wrongHolder.id,
+      );
+
+      room.playCard(roomPlayerId, wrongCard);
+      expect(room.state.lives, 4);
+    });
+  });
+}
