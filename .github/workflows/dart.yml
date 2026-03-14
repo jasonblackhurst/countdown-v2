@@ -1,0 +1,255 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies (countdown_core)
+        run: dart pub get
+        working-directory: packages/countdown_core
+
+      - name: Install dependencies (countdown_console)
+        run: dart pub get
+        working-directory: packages/countdown_console
+
+      - name: Install dependencies (countdown_server)
+        run: dart pub get
+        working-directory: apps/countdown_server
+
+      - name: Install dependencies (countdown_flutter)
+        run: flutter pub get
+        working-directory: apps/countdown_flutter
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze countdown_core
+        run: dart analyze
+        working-directory: packages/countdown_core
+
+      - name: Analyze countdown_console
+        run: dart analyze
+        working-directory: packages/countdown_console
+
+      - name: Analyze countdown_server
+        run: dart analyze
+        working-directory: apps/countdown_server
+
+      - name: Analyze countdown_flutter
+        run: flutter analyze
+        working-directory: apps/countdown_flutter
+
+      - name: Test countdown_core
+        run: dart test
+        working-directory: packages/countdown_core
+
+      - name: Test countdown_console
+        run: dart test
+        working-directory: packages/countdown_console
+
+      - name: Test countdown_server
+        run: dart test
+        working-directory: apps/countdown_server
+
+      - name: Test countdown_flutter
+        id: flutter-tests
+        continue-on-error: true
+        run: flutter test --coverage
+        working-directory: apps/countdown_flutter
+
+      - name: Check for golden failures
+        id: golden-check
+        if: always()
+        run: |
+          if [ -d "apps/countdown_flutter/test/failures" ] && [ "$(ls -A apps/countdown_flutter/test/failures 2>/dev/null)" ]; then
+            echo "golden_failures=true" >> $GITHUB_OUTPUT
+            echo "Found golden test failures:"
+            ls -la apps/countdown_flutter/test/failures/
+          else
+            echo "golden_failures=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare golden review page
+        if: steps.golden-check.outputs.golden_failures == 'true' && github.event_name == 'pull_request'
+        run: |
+          mkdir -p golden-review-deploy
+          cp apps/countdown_flutter/test/failures/* golden-review-deploy/ 2>/dev/null || true
+
+          # Copy template
+          cp .github/golden-compare-template.html golden-review-deploy/index.html
+
+          # Generate config.js from failure image filenames
+          echo "const GOLDEN_CONFIG = {" > golden-review-deploy/config.js
+          echo "  pr: ${{ github.event.pull_request.number }}," >> golden-review-deploy/config.js
+          echo "  images: [" >> golden-review-deploy/config.js
+          for f in golden-review-deploy/*_testImage.png; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            base="${fname%_testImage.png}"
+            echo "    {" >> golden-review-deploy/config.js
+            echo "      name: '${base}'," >> golden-review-deploy/config.js
+            echo "      testImage: '${base}_testImage.png'," >> golden-review-deploy/config.js
+            echo "      masterImage: '${base}_masterImage.png'," >> golden-review-deploy/config.js
+            echo "      maskedDiff: '${base}_maskedDiff.png'," >> golden-review-deploy/config.js
+            echo "      isolatedDiff: '${base}_isolatedDiff.png'," >> golden-review-deploy/config.js
+            echo "    }," >> golden-review-deploy/config.js
+          done
+          echo "  ]" >> golden-review-deploy/config.js
+          echo "};" >> golden-review-deploy/config.js
+
+      - name: Deploy golden review
+        if: steps.golden-check.outputs.golden_failures == 'true' && github.event_name == 'pull_request'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./golden-review-deploy
+          destination_dir: golden-review/pr-${{ github.event.pull_request.number }}
+          keep_files: true
+
+      - name: Comment golden review link on PR
+        if: steps.golden-check.outputs.golden_failures == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const reviewUrl = `https://${owner}.github.io/${repo}/golden-review/pr-${prNumber}/`;
+            const body = [
+              '## Golden Test Failures Detected',
+              '',
+              `**[Review visual changes](${reviewUrl})**`,
+              '',
+              'If these changes are intentional, comment `/approve-goldens` to update the golden files.',
+              '',
+              '> This comment updates automatically on new commits.',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: prNumber,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('Golden Test Failures')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: botComment.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: prNumber, body,
+              });
+            }
+
+      - name: Check coverage threshold
+        id: coverage-check
+        if: steps.flutter-tests.outcome == 'success'
+        run: |
+          LH=$(awk -F: '/^LH:/{s+=$2}END{print s}' apps/countdown_flutter/coverage/lcov.info)
+          LF=$(awk -F: '/^LF:/{s+=$2}END{print s}' apps/countdown_flutter/coverage/lcov.info)
+          COVERAGE=$(echo "scale=1; $LH * 100 / $LF" | bc)
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          THRESHOLD=80
+          echo "Coverage: $COVERAGE% (threshold: $THRESHOLD%)"
+          if [ $(echo "$COVERAGE < $THRESHOLD" | bc -l) -eq 1 ]; then
+            echo "Coverage $COVERAGE% is below threshold of $THRESHOLD%"
+            exit 1
+          fi
+
+      - name: Generate coverage report
+        if: steps.flutter-tests.outcome == 'success' && github.event_name == 'pull_request'
+        run: |
+          LH=$(awk -F: '/^LH:/{s+=$2}END{print s}' apps/countdown_flutter/coverage/lcov.info)
+          LF=$(awk -F: '/^LF:/{s+=$2}END{print s}' apps/countdown_flutter/coverage/lcov.info)
+          COVERAGE=$(echo "scale=1; $LH * 100 / $LF" | bc)
+
+          # Build per-file coverage details
+          DETAILS=$(awk -F: '
+            /^SF:/ { file=$2 }
+            /^LH:/ { lh=$2 }
+            /^LF:/ { lf=$2 }
+            /^end_of_record/ {
+              if (lf > 0) pct=sprintf("%.1f", lh*100/lf); else pct="N/A"
+              printf "%-60s %s/%s (%s%%)\n", file, lh, lf, pct
+            }
+          ' apps/countdown_flutter/coverage/lcov.info)
+
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "DETAILS<<$EOF" >> $GITHUB_ENV
+          echo "$DETAILS" >> $GITHUB_ENV
+          echo "$EOF" >> $GITHUB_ENV
+
+      - name: Comment coverage on PR
+        if: steps.flutter-tests.outcome == 'success' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const coverage = process.env.COVERAGE;
+            const details = process.env.DETAILS;
+            const icon = parseFloat(coverage) >= 80 ? ':white_check_mark:' : ':warning:';
+
+            const body = [
+              '## ' + icon + ' Test Coverage Report',
+              '',
+              `**Overall: ${coverage}% line coverage**`,
+              '',
+              '```',
+              details,
+              '```',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('Test Coverage Report')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Fail if tests failed
+        if: steps.flutter-tests.outcome == 'failure'
+        run: exit 1
