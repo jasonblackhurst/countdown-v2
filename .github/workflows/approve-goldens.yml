@@ -1,0 +1,124 @@
+name: Approve Goldens
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  approve:
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/approve-goldens')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify commenter permissions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.comment.user.login,
+            });
+            if (!['admin', 'write'].includes(perm.permission)) {
+              core.setFailed('User does not have write access');
+            }
+
+      - name: React to comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket',
+            });
+
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            core.setOutput('ref', pr.head.ref);
+            core.setOutput('sha', pr.head.sha);
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: apps/countdown_flutter
+
+      - name: Update golden files
+        run: flutter test --update-goldens
+        working-directory: apps/countdown_flutter
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git add apps/countdown_flutter/test/golden/screens/goldens/ apps/countdown_flutter/test/failures/ 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit updated goldens
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -m "Update golden files
+
+          Approved by @${{ github.event.comment.user.login }} in PR #${{ github.event.issue.number }}"
+          git push
+
+      - name: Verify tests pass
+        id: verify
+        if: steps.changes.outputs.changed == 'true'
+        continue-on-error: true
+        run: flutter test
+        working-directory: apps/countdown_flutter
+
+      - name: Post result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const changed = '${{ steps.changes.outputs.changed }}' === 'true';
+            const verified = '${{ steps.verify.outcome }}' !== 'failure';
+            let body;
+
+            if (!changed) {
+              body = 'No golden file changes needed — all goldens are up to date.';
+            } else if (verified) {
+              body = 'Golden files updated and all tests pass.';
+            } else {
+              body = 'Golden files updated but some tests are failing. Please check the CI output.';
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
