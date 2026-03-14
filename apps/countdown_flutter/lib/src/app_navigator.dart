@@ -35,6 +35,7 @@ class CountdownApp extends StatefulWidget {
 
 class _CountdownAppState extends State<CountdownApp> {
   late final GameClient _client;
+  String? _lastShownError;
 
   @override
   void initState() {
@@ -62,8 +63,20 @@ class _CountdownAppState extends State<CountdownApp> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _client,
-      builder: (_, __) {
+      builder: (context, __) {
         final state = _client.state;
+
+        // Show error SnackBar when a new error arrives from the server
+        if (state.lastError != null && state.lastError != _lastShownError) {
+          _lastShownError = state.lastError;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.lastError!)),
+              );
+            }
+          });
+        }
 
         if (widget.pileViewerMode && state.roomCode != null) {
           return PileScreen(client: _client);

@@ -2,13 +2,16 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 30_000,
+  timeout: parseInt(process.env.SLOW_MO ?? '0', 10) > 0 ? 120_000 : 30_000,
   fullyParallel: false,   // multiplayer tests share server state — run serially
   retries: 0,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:8081',
     trace: 'on-first-retry',
+    launchOptions: {
+      slowMo: parseInt(process.env.SLOW_MO ?? '0', 10),
+    },
   },
   projects: [
     {
