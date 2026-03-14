@@ -141,17 +141,25 @@ class _CardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // Semantics(button: true) produces role="button" in Flutter's web accessibility
+    // tree, which lets Playwright and screen readers interact with card tiles via
+    // standard click/activation — GestureDetector alone only produces role="group".
+    return Semantics(
+      button: onTap != null,
+      label: '$value',
       onTap: onTap,
-      child: Card(
-        elevation: onTap != null ? 4 : 1,
-        child: Center(
-          child: Text(
-            '$value',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: onTap != null ? Colors.black87 : Colors.grey,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Card(
+          elevation: onTap != null ? 4 : 1,
+          child: Center(
+            child: Text(
+              '$value',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: onTap != null ? Colors.black87 : Colors.grey,
+              ),
             ),
           ),
         ),

@@ -132,6 +132,7 @@ class Room {
         'lives': 5,
         'round_number': 0,
         'discard_pile': <int>[],
+        'game_initialized': false,
         'players': players,
       },
     });
@@ -147,6 +148,7 @@ class Room {
       final msg = encode(stateUpdateMsg(
         _engine.state,
         localEnginePlayerId: engineId,
+        engineToRoomIds: _engineIdToPlayerId,
       ));
       conn.sink.add(msg);
     }

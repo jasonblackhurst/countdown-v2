@@ -279,13 +279,13 @@ void main() {
       final aliceUpdate = sinks[0].msgsOfType('state_update').last;
       final alicePlayers = aliceUpdate['state']['players'] as List;
       final aliceEntry = alicePlayers.firstWhere(
-        (p) => room.engineIdForPlayerId(ids[0]) == (p as Map)['id'],
+        (p) => ids[0] == (p as Map)['id'],
       ) as Map;
       expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
 
       // Alice's view of Bob should have an empty hand list
       final bobEntry = alicePlayers.firstWhere(
-        (p) => room.engineIdForPlayerId(ids[1]) == (p as Map)['id'],
+        (p) => ids[1] == (p as Map)['id'],
       ) as Map;
       expect(bobEntry['hand'], isEmpty);
     });
@@ -318,6 +318,40 @@ void main() {
       expect(room.state.phase, GamePhase.lobby);
     });
 
+    test('17. addPlayer lobby state_update has game_initialized: false', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink1 = _RecordingSink();
+      room.addPlayer('Alice', sink1);
+      final sink2 = _RecordingSink();
+      room.addPlayer('Bob', sink2);
+
+      // The last state_update each sink received should have game_initialized: false
+      final aliceLastUpdate = sink1.msgsOfType('state_update').last;
+      expect(aliceLastUpdate['state']['game_initialized'], isFalse);
+
+      final bobLastUpdate = sink2.msgsOfType('state_update').last;
+      expect(bobLastUpdate['state']['game_initialized'], isFalse);
+    });
+
+    test('18. startGame state_update has game_initialized: true', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      // The last state_update after startGame should have game_initialized: true
+      final aliceLastUpdate = sinks[0].msgsOfType('state_update').last;
+      expect(aliceLastUpdate['state']['game_initialized'], isTrue);
+
+      final bobLastUpdate = sinks[1].msgsOfType('state_update').last;
+      expect(bobLastUpdate['state']['game_initialized'], isTrue);
+    });
+
     test('16. removePlayer on last player returns isEmpty true', () {
       final manager = RoomManager();
       final room = manager.createRoom();
@@ -329,6 +363,59 @@ void main() {
       room.removePlayer(ids[0]);
       room.removePlayer(ids[1]);
       expect(room.isEmpty, isTrue);
+    });
+
+    test('19. state_update player IDs are room UUIDs, not engine IDs', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      final lastUpdate = sinks[0].msgsOfType('state_update').last;
+      final players = lastUpdate['state']['players'] as List;
+
+      // The players list must contain Alice's room UUID
+      expect(
+        players.any((p) => (p as Map)['id'] == ids[0]),
+        isTrue,
+        reason: 'Expected room UUID ${ids[0]} in players list',
+      );
+
+      // The players list must NOT contain the engine ID (e.g. "player_0")
+      final engineId = room.engineIdForPlayerId(ids[0]);
+      expect(
+        players.any((p) => (p as Map)['id'] == engineId),
+        isFalse,
+        reason: 'Engine ID $engineId should not appear in players list',
+      );
+    });
+
+    test('20. myPlayer can be identified from state_update using the room player ID', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      final lastUpdate = sinks[0].msgsOfType('state_update').last;
+      final players = lastUpdate['state']['players'] as List;
+
+      // Alice's entry (identified by room UUID) should have a non-empty hand
+      final aliceEntry = players.firstWhere(
+        (p) => (p as Map)['id'] == ids[0],
+      ) as Map;
+      expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
     });
   });
 }

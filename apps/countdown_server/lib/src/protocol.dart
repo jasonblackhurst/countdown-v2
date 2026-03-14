@@ -69,24 +69,31 @@ Map<String, dynamic> errorMsg(String message) => {
 Map<String, dynamic> stateUpdateMsg(
   GameState state, {
   String? localEnginePlayerId,
+  Map<String, String>? engineToRoomIds,
 }) =>
     {
       'type': 'state_update',
-      'state': _serializeState(state, localEnginePlayerId: localEnginePlayerId),
+      'state': _serializeState(
+        state,
+        localEnginePlayerId: localEnginePlayerId,
+        engineToRoomIds: engineToRoomIds,
+      ),
     };
 
 Map<String, dynamic> _serializeState(
   GameState state, {
   String? localEnginePlayerId,
+  Map<String, String>? engineToRoomIds,
 }) =>
     {
       'phase': state.phase.name,
       'lives': state.lives,
       'round_number': state.roundNumber,
       'discard_pile': state.discardPile.map((c) => c.value).toList(),
+      'game_initialized': true,
       'players': state.players
           .map((p) => {
-                'id': p.id,
+                'id': engineToRoomIds?[p.id] ?? p.id,
                 'name': p.name,
                 'hand_size': p.hand.cards.length,
                 // Only include actual card values for the local player

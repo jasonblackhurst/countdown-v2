@@ -42,6 +42,7 @@ Map<String, dynamic> _stateUpdate({
   int roundNumber = 0,
   List<int> discardPile = const [],
   List<Map<String, dynamic>>? players,
+  bool gameInitialized = false,
 }) =>
     {
       'type': 'state_update',
@@ -50,6 +51,7 @@ Map<String, dynamic> _stateUpdate({
         'lives': lives,
         'round_number': roundNumber,
         'discard_pile': discardPile,
+        'game_initialized': gameInitialized,
         'players': players ??
             [
               {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
@@ -223,6 +225,60 @@ void main() {
 
       expect(find.text('TEST'), findsOneWidget);
       expect(find.text('Alice'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+  });
+
+  group('LobbyScreen game_initialized', () {
+    testWidgets('A. pre-game (game_initialized: false, 2 players) shows Start Game, not vote UI', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(jsonEncode(
+          {'type': 'room_created', 'room_code': 'ABCD', 'player_id': 'p1'}));
+      ctrl.add(jsonEncode(_stateUpdate(
+        phase: 'lobby',
+        roundNumber: 0,
+        gameInitialized: false,
+        players: [
+          {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+          {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+        ],
+      )));
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Start Game'), findsOneWidget);
+      expect(find.text('Confirm Vote'), findsNothing);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('B. post-startGame (game_initialized: true, phase lobby) shows vote UI, not Start Game', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(jsonEncode(
+          {'type': 'room_created', 'room_code': 'ABCD', 'player_id': 'p1'}));
+      ctrl.add(jsonEncode(_stateUpdate(
+        phase: 'lobby',
+        roundNumber: 0,
+        gameInitialized: true,
+        players: [
+          {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+          {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+        ],
+      )));
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Start Game'), findsNothing);
+      expect(find.text('Confirm Vote'), findsOneWidget);
       await ctrl.close();
       client.dispose();
     });

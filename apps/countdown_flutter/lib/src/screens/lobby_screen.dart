@@ -20,8 +20,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
     final players = state.players ?? [];
     final gameStarted = (state.roundNumber ?? 0) > 0;
     final isRound = state.phase == GamePhase.round;
-    // Show vote UI during an active round OR between rounds (lobby after round 1+)
-    final showVote = isRound || gameStarted;
+    // Show vote UI during an active round, between rounds (lobby after round 1+),
+    // or post-startGame waiting for first vote (game_initialized: true, round 0)
+    final showVote = isRound || gameStarted || state.gameInitialized;
 
     return Scaffold(
       appBar: AppBar(
