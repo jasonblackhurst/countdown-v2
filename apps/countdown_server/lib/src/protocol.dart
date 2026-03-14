@@ -96,9 +96,9 @@ Map<String, dynamic> _serializeState(
                 'id': engineToRoomIds?[p.id] ?? p.id,
                 'name': p.name,
                 'hand_size': p.hand.cards.length,
-                // Only include actual card values for the local player
+                // Only include actual card values for the local player, sorted descending
                 'hand': p.id == localEnginePlayerId
-                    ? p.hand.cards.map((c) => c.value).toList()
+                    ? (p.hand.cards.map((c) => c.value).toList()..sort((a, b) => b.compareTo(a)))
                     : <int>[],
               })
           .toList(),

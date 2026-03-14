@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:countdown_core/countdown_core.dart';
 import 'package:test/test.dart';
 
@@ -5,23 +7,42 @@ void main() {
   // ── Deck ──────────────────────────────────────────────────────────────────
 
   group('Deck', () {
-    test('1. initializes with exactly 100 cards, values 100 down to 1', () {
+    test('1. initializes with exactly 100 unique cards valued 1–100', () {
       final deck = Deck();
       expect(deck.cardsRemaining, 100);
 
-      // Deal all cards to one player to inspect order
+      // Deal all cards to one player to inspect values
       final hands = deck.deal(100, 1);
-      final values = hands.first.map((c) => c.value).toList();
-      expect(values, List.generate(100, (i) => 100 - i));
+      final values = hands.first.map((c) => c.value).toSet();
+      expect(values, Set<int>.from(List.generate(100, (i) => i + 1)));
     });
 
-    test('2. deal(n, playerCount) takes the next n*playerCount cards from the front', () {
-      final deck = Deck();
+    test('1b. deck is shuffled (non-deterministic order)', () {
+      // Two decks with different Random seeds should produce different orders
+      final deck1 = Deck(random: Random(1));
+      final deck2 = Deck(random: Random(2));
+      final values1 = deck1.deal(100, 1).first.map((c) => c.value).toList();
+      final values2 = deck2.deal(100, 1).first.map((c) => c.value).toList();
+      expect(values1, isNot(equals(values2)));
+    });
+
+    test('1c. seeded deck produces deterministic order', () {
+      final deck1 = Deck(random: Random(42));
+      final deck2 = Deck(random: Random(42));
+      final values1 = deck1.deal(100, 1).first.map((c) => c.value).toList();
+      final values2 = deck2.deal(100, 1).first.map((c) => c.value).toList();
+      expect(values1, equals(values2));
+    });
+
+    test('2. deal(n, playerCount) gives each player n unique non-overlapping cards', () {
+      final deck = Deck(random: Random(42));
       final hands = deck.deal(3, 2); // 6 cards total
-      // Player 0 gets positions 0,1,2 (values 100,99,98)
-      expect(hands[0].map((c) => c.value).toList(), [100, 99, 98]);
-      // Player 1 gets positions 3,4,5 (values 97,96,95)
-      expect(hands[1].map((c) => c.value).toList(), [97, 96, 95]);
+      expect(hands[0].length, 3);
+      expect(hands[1].length, 3);
+      // No overlap between players
+      final set0 = hands[0].map((c) => c.value).toSet();
+      final set1 = hands[1].map((c) => c.value).toSet();
+      expect(set0.intersection(set1), isEmpty);
     });
 
     test('3. cardsRemaining reflects correct count after dealing', () {
@@ -44,7 +65,7 @@ void main() {
 
     setUp(() {
       engine = GameEngine();
-      engine.startGame(['Alice', 'Bob']);
+      engine.startGame(['Alice', 'Bob'], random: Random(42));
     });
 
     test('5. startGame initializes 5 lives and empty discard', () {
@@ -63,37 +84,44 @@ void main() {
 
     test('7. currentHighestCard returns max card across all hands', () {
       engine.startRound(3);
-      // After dealing 6 cards (100,99,98 | 97,96,95), highest is 100
-      expect(engine.currentHighestCard()?.value, 100);
+      final allValues = engine.state.players
+          .expand((p) => p.hand.cards)
+          .map((c) => c.value);
+      expect(engine.currentHighestCard()?.value, allValues.reduce((a, b) => a > b ? a : b));
     });
 
     test('8. playing the correct card (highest) returns PlayResult.valid', () {
       engine.startRound(1);
-      // Alice gets card 100, Bob gets card 99
-      final alice = engine.state.players[0];
       final highest = engine.currentHighestCard()!;
-      final result = engine.playCard(alice.id, highest);
+      final holder = engine.state.players.firstWhere(
+        (p) => p.hand.cards.contains(highest),
+      );
+      final result = engine.playCard(holder.id, highest);
       expect(result, PlayResult.valid);
     });
 
     test('9. playing correct card decrements hand and adds to discard', () {
       engine.startRound(1);
-      final alice = engine.state.players[0];
       final highest = engine.currentHighestCard()!;
-      engine.playCard(alice.id, highest);
-      expect(alice.hand.isEmpty, isTrue);
+      final holder = engine.state.players.firstWhere(
+        (p) => p.hand.cards.contains(highest),
+      );
+      engine.playCard(holder.id, highest);
+      expect(holder.hand.isEmpty, isTrue);
       expect(engine.state.discardPile.length, 1);
       expect(engine.state.discardPile.first, highest);
     });
 
     test('10. playing incorrect card returns PlayResult.invalid and decrements lives', () {
       engine.startRound(2);
-      // Bob holds cards at positions 3,4 → values 97,96; neither is the highest (100)
-      final bob = engine.state.players[1];
       final highest = engine.currentHighestCard()!;
-      final wrongCard = bob.hand.cards.firstWhere((c) => c != highest);
+      // Find any player holding a card that is not the highest
+      final wrongHolder = engine.state.players.firstWhere(
+        (p) => p.hand.cards.any((c) => c != highest),
+      );
+      final wrongCard = wrongHolder.hand.cards.firstWhere((c) => c != highest);
 
-      final result = engine.playCard(bob.id, wrongCard);
+      final result = engine.playCard(wrongHolder.id, wrongCard);
       expect(result, PlayResult.invalid);
       expect(engine.state.lives, 4);
     });
@@ -128,17 +156,19 @@ void main() {
     });
 
     test('14. two sequential rounds deal from correct deck position (no overlap, no gap)', () {
-      engine.startRound(2); // deals positions 0–3 (values 100,99,98,97)
+      engine.startRound(2);
       final round1Cards = engine.state.players
           .expand((p) => p.hand.cards)
           .map((c) => c.value)
           .toSet();
+      expect(round1Cards.length, 4); // 2 cards × 2 players
 
-      engine.startRound(2); // deals positions 4–7 (values 96,95,94,93)
+      engine.startRound(2);
       final round2Cards = engine.state.players
           .expand((p) => p.hand.cards)
           .map((c) => c.value)
           .toSet();
+      expect(round2Cards.length, 4);
 
       expect(round1Cards.intersection(round2Cards), isEmpty);
       expect(engine.cardsRemaining(), 92); // 100 - 4 - 4

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'models/card.dart';
 import 'models/deck.dart';
 import 'models/game_state.dart';
@@ -9,7 +11,7 @@ enum PlayResult { valid, invalid, gameOver, win }
 class GameEngine {
   late GameState state;
 
-  void startGame(List<String> playerNames) {
+  void startGame(List<String> playerNames, {Random? random}) {
     final players = playerNames
         .asMap()
         .entries
@@ -18,7 +20,7 @@ class GameEngine {
 
     state = GameState(
       lives: 5,
-      deck: Deck(),
+      deck: Deck(random: random),
       players: players,
       phase: GamePhase.lobby,
     );
