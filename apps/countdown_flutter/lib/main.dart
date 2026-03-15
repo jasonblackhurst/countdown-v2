@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'src/app_navigator.dart';
 
+const _wsUrl = String.fromEnvironment(
+  'WS_URL',
+  defaultValue: 'ws://localhost:8080/ws',
+);
+
 void main() {
   runApp(
     MaterialApp(
@@ -11,7 +16,7 @@ void main() {
         useMaterial3: true,
       ),
       home: CountdownApp(
-        serverUri: Uri.parse('ws://localhost:8080/ws'),
+        serverUri: Uri.parse(_wsUrl),
       ),
     ),
   );
