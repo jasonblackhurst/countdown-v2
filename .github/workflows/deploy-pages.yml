@@ -29,7 +29,10 @@ jobs:
         working-directory: apps/countdown_flutter
 
       - name: Build web
-        run: flutter build web --base-href /${{ github.event.repository.name }}/
+        run: |
+          flutter build web \
+            --base-href /${{ github.event.repository.name }}/ \
+            --dart-define=WS_URL=${{ vars.CLOUD_RUN_WS_URL }}
         working-directory: apps/countdown_flutter
 
       - name: Deploy to GitHub Pages

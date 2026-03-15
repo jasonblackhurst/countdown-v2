@@ -27,7 +27,9 @@ jobs:
 
       - name: Build web for PR preview
         run: |
-          flutter build web --base-href /${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/
+          flutter build web \
+            --base-href /${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/ \
+            --dart-define=WS_URL=${{ vars.CLOUD_RUN_WS_URL }}
         working-directory: apps/countdown_flutter
 
       - name: Deploy to GitHub Pages
