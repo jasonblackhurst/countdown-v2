@@ -1,0 +1,28 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'apps/countdown_server/Dockerfile'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/countdown-server'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/countdown-server'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - 'gcloud'
+      - 'run'
+      - 'deploy'
+      - 'countdown-v2'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/countdown-server'
+      - '--region'
+      - 'us-central1'
+      - '--port'
+      - '8080'
+      - '--allow-unauthenticated'
+images:
+  - 'gcr.io/$PROJECT_ID/countdown-server'
