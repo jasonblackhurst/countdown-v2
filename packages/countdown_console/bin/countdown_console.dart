@@ -46,8 +46,9 @@ void simulate(String botType, {int playerCount = 2}) {
 
       for (final bot in bots) {
         if (engine.state.phase == GamePhase.gameOver ||
-            engine.state.phase == GamePhase.won)
+            engine.state.phase == GamePhase.won) {
           break;
+        }
 
         final card = bot.chooseCard(engine);
         if (card == null) continue;
