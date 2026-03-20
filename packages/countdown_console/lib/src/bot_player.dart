@@ -16,8 +16,7 @@ class OptimalBot extends Bot {
 
   @override
   GameCard? chooseCard(GameEngine engine) {
-    final player =
-        engine.state.players.firstWhere((p) => p.id == playerId);
+    final player = engine.state.players.firstWhere((p) => p.id == playerId);
     final myHighest = player.hand.highest;
     if (myHighest == null) return null;
     final globalHighest = engine.currentHighestCard();
@@ -32,12 +31,11 @@ class FallibleBot extends Bot {
   final Random _rng;
 
   FallibleBot(super.playerId, {this.errorRate = 0.4, Random? rng})
-      : _rng = rng ?? Random();
+    : _rng = rng ?? Random();
 
   @override
   GameCard? chooseCard(GameEngine engine) {
-    final player =
-        engine.state.players.firstWhere((p) => p.id == playerId);
+    final player = engine.state.players.firstWhere((p) => p.id == playerId);
     final myHighest = player.hand.highest;
     if (myHighest == null) return null;
 

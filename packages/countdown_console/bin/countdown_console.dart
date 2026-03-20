@@ -12,9 +12,7 @@ void simulate(String botType, {int playerCount = 2}) {
   engine.startGame(names);
 
   final bots = engine.state.players.map((p) {
-    return botType == 'optimal'
-        ? OptimalBot(p.id) as Bot
-        : FallibleBot(p.id);
+    return botType == 'optimal' ? OptimalBot(p.id) as Bot : FallibleBot(p.id);
   }).toList();
 
   print('=== Countdown (Descending) — $botType bots, $playerCount players ===');
@@ -48,7 +46,8 @@ void simulate(String botType, {int playerCount = 2}) {
 
       for (final bot in bots) {
         if (engine.state.phase == GamePhase.gameOver ||
-            engine.state.phase == GamePhase.won) break;
+            engine.state.phase == GamePhase.won)
+          break;
 
         final card = bot.chooseCard(engine);
         if (card == null) continue;
@@ -62,7 +61,9 @@ void simulate(String botType, {int playerCount = 2}) {
           PlayResult.gameOver => '✗ GAME OVER',
           PlayResult.win => '★ WIN',
         };
-        print('  ${bot.runtimeType}[${bot.playerId}] plays ${card.value} → $marker');
+        print(
+          '  ${bot.runtimeType}[${bot.playerId}] plays ${card.value} → $marker',
+        );
 
         if (result == PlayResult.gameOver || result == PlayResult.win) break;
       }

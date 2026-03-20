@@ -34,16 +34,19 @@ void main() {
       expect(values1, equals(values2));
     });
 
-    test('2. deal(n, playerCount) gives each player n unique non-overlapping cards', () {
-      final deck = Deck(random: Random(42));
-      final hands = deck.deal(3, 2); // 6 cards total
-      expect(hands[0].length, 3);
-      expect(hands[1].length, 3);
-      // No overlap between players
-      final set0 = hands[0].map((c) => c.value).toSet();
-      final set1 = hands[1].map((c) => c.value).toSet();
-      expect(set0.intersection(set1), isEmpty);
-    });
+    test(
+      '2. deal(n, playerCount) gives each player n unique non-overlapping cards',
+      () {
+        final deck = Deck(random: Random(42));
+        final hands = deck.deal(3, 2); // 6 cards total
+        expect(hands[0].length, 3);
+        expect(hands[1].length, 3);
+        // No overlap between players
+        final set0 = hands[0].map((c) => c.value).toSet();
+        final set1 = hands[1].map((c) => c.value).toSet();
+        expect(set0.intersection(set1), isEmpty);
+      },
+    );
 
     test('3. cardsRemaining reflects correct count after dealing', () {
       final deck = Deck();
@@ -87,7 +90,10 @@ void main() {
       final allValues = engine.state.players
           .expand((p) => p.hand.cards)
           .map((c) => c.value);
-      expect(engine.currentHighestCard()?.value, allValues.reduce((a, b) => a > b ? a : b));
+      expect(
+        engine.currentHighestCard()?.value,
+        allValues.reduce((a, b) => a > b ? a : b),
+      );
     });
 
     test('8. playing the correct card (highest) returns PlayResult.valid', () {
@@ -112,32 +118,40 @@ void main() {
       expect(engine.state.discardPile.first, highest);
     });
 
-    test('10. playing incorrect card returns PlayResult.invalid and decrements lives', () {
-      engine.startRound(2);
-      final highest = engine.currentHighestCard()!;
-      // Find any player holding a card that is not the highest
-      final wrongHolder = engine.state.players.firstWhere(
-        (p) => p.hand.cards.any((c) => c != highest),
-      );
-      final wrongCard = wrongHolder.hand.cards.firstWhere((c) => c != highest);
+    test(
+      '10. playing incorrect card returns PlayResult.invalid and decrements lives',
+      () {
+        engine.startRound(2);
+        final highest = engine.currentHighestCard()!;
+        // Find any player holding a card that is not the highest
+        final wrongHolder = engine.state.players.firstWhere(
+          (p) => p.hand.cards.any((c) => c != highest),
+        );
+        final wrongCard = wrongHolder.hand.cards.firstWhere(
+          (c) => c != highest,
+        );
 
-      final result = engine.playCard(wrongHolder.id, wrongCard);
-      expect(result, PlayResult.invalid);
-      expect(engine.state.lives, 4);
-    });
+        final result = engine.playCard(wrongHolder.id, wrongCard);
+        expect(result, PlayResult.invalid);
+        expect(engine.state.lives, 4);
+      },
+    );
 
-    test('11. playing incorrect card with 1 life remaining returns PlayResult.gameOver', () {
-      engine.state.lives = 1;
-      engine.startRound(2);
-      final bob = engine.state.players[1];
-      final highest = engine.currentHighestCard()!;
-      final wrongCard = bob.hand.cards.firstWhere((c) => c != highest);
+    test(
+      '11. playing incorrect card with 1 life remaining returns PlayResult.gameOver',
+      () {
+        engine.state.lives = 1;
+        engine.startRound(2);
+        final bob = engine.state.players[1];
+        final highest = engine.currentHighestCard()!;
+        final wrongCard = bob.hand.cards.firstWhere((c) => c != highest);
 
-      final result = engine.playCard(bob.id, wrongCard);
-      expect(result, PlayResult.gameOver);
-      expect(engine.state.lives, 0);
-      expect(engine.state.phase, GamePhase.gameOver);
-    });
+        final result = engine.playCard(bob.id, wrongCard);
+        expect(result, PlayResult.gameOver);
+        expect(engine.state.lives, 0);
+        expect(engine.state.phase, GamePhase.gameOver);
+      },
+    );
 
     test('12 & 13. playing the 100th card returns PlayResult.win', () {
       // Pre-fill discard with 99 cards (values 100 down to 2)
@@ -155,23 +169,26 @@ void main() {
       expect(engine.state.phase, GamePhase.won);
     });
 
-    test('14. two sequential rounds deal from correct deck position (no overlap, no gap)', () {
-      engine.startRound(2);
-      final round1Cards = engine.state.players
-          .expand((p) => p.hand.cards)
-          .map((c) => c.value)
-          .toSet();
-      expect(round1Cards.length, 4); // 2 cards × 2 players
+    test(
+      '14. two sequential rounds deal from correct deck position (no overlap, no gap)',
+      () {
+        engine.startRound(2);
+        final round1Cards = engine.state.players
+            .expand((p) => p.hand.cards)
+            .map((c) => c.value)
+            .toSet();
+        expect(round1Cards.length, 4); // 2 cards × 2 players
 
-      engine.startRound(2);
-      final round2Cards = engine.state.players
-          .expand((p) => p.hand.cards)
-          .map((c) => c.value)
-          .toSet();
-      expect(round2Cards.length, 4);
+        engine.startRound(2);
+        final round2Cards = engine.state.players
+            .expand((p) => p.hand.cards)
+            .map((c) => c.value)
+            .toSet();
+        expect(round2Cards.length, 4);
 
-      expect(round1Cards.intersection(round2Cards), isEmpty);
-      expect(engine.cardsRemaining(), 92); // 100 - 4 - 4
-    });
+        expect(round1Cards.intersection(round2Cards), isEmpty);
+        expect(engine.cardsRemaining(), 92); // 100 - 4 - 4
+      },
+    );
   });
 }

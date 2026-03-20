@@ -15,9 +15,7 @@ void main() {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: CountdownApp(
-        serverUri: Uri.parse(_wsUrl),
-      ),
+      home: CountdownApp(serverUri: Uri.parse(_wsUrl)),
     ),
   );
 }

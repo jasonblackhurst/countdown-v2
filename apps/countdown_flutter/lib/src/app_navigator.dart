@@ -71,9 +71,9 @@ class _CountdownAppState extends State<CountdownApp> {
           _lastShownError = state.lastError;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.lastError!)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.lastError!)));
             }
           });
         }

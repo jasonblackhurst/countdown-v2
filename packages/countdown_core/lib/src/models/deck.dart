@@ -6,7 +6,8 @@ class Deck {
   final List<GameCard> _cards;
   int _position = 0;
 
-  Deck({Random? random}) : _cards = List.generate(100, (i) => GameCard(100 - i)) {
+  Deck({Random? random})
+    : _cards = List.generate(100, (i) => GameCard(100 - i)) {
     _cards.shuffle(random);
   }
 

@@ -54,11 +54,11 @@ class GameScreen extends StatelessWidget {
                     : GridView.builder(
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 120,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 0.75,
-                        ),
+                              maxCrossAxisExtent: 120,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                              childAspectRatio: 0.75,
+                            ),
                         itemCount: hand.length,
                         itemBuilder: (_, i) => _CardTile(
                           value: hand[i],
@@ -72,12 +72,14 @@ class GameScreen extends StatelessWidget {
               // ── End-of-round / game-over banners ────────────────────────
               if (state.phase == GamePhase.won)
                 _Banner(
-                    text: 'You won! All 100 cards played.',
-                    color: Colors.green.shade700),
+                  text: 'You won! All 100 cards played.',
+                  color: Colors.green.shade700,
+                ),
               if (state.phase == GamePhase.gameOver)
                 _Banner(
-                    text: 'Game over — no lives left.',
-                    color: Colors.red.shade700),
+                  text: 'Game over — no lives left.',
+                  color: Colors.red.shade700,
+                ),
             ],
           ),
         ),
@@ -127,8 +129,7 @@ class _LastPlayedCard extends StatelessWidget {
           ? const Text('—', style: TextStyle(fontSize: 32, color: Colors.grey))
           : Text(
               '$value',
-              style: const TextStyle(
-                  fontSize: 40, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
             ),
     );
   }

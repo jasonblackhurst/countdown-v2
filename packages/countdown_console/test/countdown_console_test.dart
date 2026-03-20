@@ -24,7 +24,8 @@ GameState runGame(GameEngine engine, List<Bot> bots) {
       anyPlayed = false;
       for (final bot in bots) {
         if (engine.state.phase == GamePhase.gameOver ||
-            engine.state.phase == GamePhase.won) break;
+            engine.state.phase == GamePhase.won)
+          break;
 
         final card = bot.chooseCard(engine);
         if (card == null) continue;

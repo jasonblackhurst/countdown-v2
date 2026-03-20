@@ -2,7 +2,7 @@ class GameCard implements Comparable<GameCard> {
   final int value;
 
   const GameCard(this.value)
-      : assert(value >= 1 && value <= 100, 'Card value must be 1–100');
+    : assert(value >= 1 && value <= 100, 'Card value must be 1–100');
 
   @override
   int compareTo(GameCard other) => value.compareTo(other.value);
