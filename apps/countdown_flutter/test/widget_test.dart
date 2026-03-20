@@ -193,14 +193,14 @@ void main() {
 
   // ── Widget tests ──────────────────────────────────────────────────────────
 
-  Widget _wrap(Widget child, GameClient client) => MaterialApp(
-    home: ListenableBuilder(listenable: client, builder: (_, __) => child),
+  Widget wrap(Widget child, GameClient client) => MaterialApp(
+    home: ListenableBuilder(listenable: client, builder: (_, _) => child),
   );
 
   group('HomeScreen', () {
     testWidgets('13. shows Create Room and Join Room buttons', (tester) async {
       final client = GameClient();
-      await tester.pumpWidget(_wrap(HomeScreen(client: client), client));
+      await tester.pumpWidget(wrap(HomeScreen(client: client), client));
       expect(find.text('Create Room'), findsOneWidget);
       expect(find.text('Join Room'), findsOneWidget);
       client.dispose();
@@ -212,7 +212,7 @@ void main() {
       final client = GameClient();
       final (sink, ctrl) = connectFake(client);
 
-      await tester.pumpWidget(_wrap(HomeScreen(client: client), client));
+      await tester.pumpWidget(wrap(HomeScreen(client: client), client));
       await tester.tap(find.text('Create Room'));
       await tester.pump();
 
@@ -245,7 +245,7 @@ void main() {
       );
       await Future.microtask(() {});
 
-      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+      await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
       await tester.pump();
 
       expect(find.text('TEST'), findsOneWidget);
@@ -284,7 +284,7 @@ void main() {
         );
         await Future.microtask(() {});
 
-        await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
         await tester.pump();
 
         expect(find.text('Start Game'), findsOneWidget);
@@ -322,7 +322,7 @@ void main() {
         );
         await Future.microtask(() {});
 
-        await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
         await tester.pump();
 
         expect(find.text('Start Game'), findsNothing);
@@ -362,7 +362,7 @@ void main() {
         );
         await Future.microtask(() {});
 
-        await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
         await tester.pump();
 
         expect(find.text('Start Game'), findsNothing);
@@ -407,7 +407,7 @@ void main() {
       );
       await Future.microtask(() {});
 
-      await tester.pumpWidget(_wrap(GameScreen(client: client), client));
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
       await tester.pump();
 
       expect(find.text('3'), findsOneWidget); // lives

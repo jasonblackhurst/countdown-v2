@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:countdown_core/countdown_core.dart';
 import 'package:countdown_flutter/src/client/game_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -119,7 +118,7 @@ Future<void> pumpScreen(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      home: ListenableBuilder(listenable: client, builder: (_, __) => screen),
+      home: ListenableBuilder(listenable: client, builder: (_, _) => screen),
       debugShowCheckedModeBanner: false,
     ),
   );

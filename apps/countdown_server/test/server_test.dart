@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:countdown_core/countdown_core.dart';
-import 'package:countdown_server/src/room.dart';
 import 'package:countdown_server/src/room_manager.dart';
 import 'package:test/test.dart';
 
@@ -32,20 +31,6 @@ class _RecordingSink implements StreamSink<String> {
 
   Iterable<Map<String, dynamic>> msgsOfType(String type) =>
       received.where((m) => m['type'] == type);
-}
-
-// ── Helper ────────────────────────────────────────────────────────────────
-
-Room _startedRoom({int players = 2}) {
-  final manager = RoomManager();
-  final room = manager.createRoom();
-  final sinks = List.generate(players, (_) => _RecordingSink());
-  final ids = [
-    for (var i = 0; i < players; i++)
-      room.addPlayer('Player${i + 1}', sinks[i]),
-  ];
-  room.startGame(ids.first); // host starts game
-  return room;
 }
 
 void main() {
