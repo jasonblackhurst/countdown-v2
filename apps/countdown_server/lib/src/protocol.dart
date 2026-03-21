@@ -12,9 +12,9 @@ sealed class ClientMessage {
     return switch (map['type'] as String) {
       'create_room' => const CreateRoomMsg(),
       'join_room' => JoinRoomMsg(
-          roomCode: map['room_code'] as String,
-          playerName: map['name'] as String,
-        ),
+        roomCode: map['room_code'] as String,
+        playerName: map['name'] as String,
+      ),
       'start_game' => const StartGameMsg(),
       'vote_card_count' => VoteCardCountMsg(map['count'] as int),
       'play_card' => PlayCardMsg(GameCard(map['value'] as int)),
@@ -50,58 +50,59 @@ class PlayCardMsg extends ClientMessage {
 // ── Outgoing message builders ─────────────────────────────────────────────
 
 Map<String, dynamic> roomCreatedMsg(String roomCode, String playerId) => {
-      'type': 'room_created',
-      'room_code': roomCode,
-      'player_id': playerId,
-    };
+  'type': 'room_created',
+  'room_code': roomCode,
+  'player_id': playerId,
+};
 
 Map<String, dynamic> roomJoinedMsg(String roomCode, String playerId) => {
-      'type': 'room_joined',
-      'room_code': roomCode,
-      'player_id': playerId,
-    };
+  'type': 'room_joined',
+  'room_code': roomCode,
+  'player_id': playerId,
+};
 
 Map<String, dynamic> errorMsg(String message) => {
-      'type': 'error',
-      'message': message,
-    };
+  'type': 'error',
+  'message': message,
+};
 
 Map<String, dynamic> stateUpdateMsg(
   GameState state, {
   String? localEnginePlayerId,
   Map<String, String>? engineToRoomIds,
-}) =>
-    {
-      'type': 'state_update',
-      'state': _serializeState(
-        state,
-        localEnginePlayerId: localEnginePlayerId,
-        engineToRoomIds: engineToRoomIds,
-      ),
-    };
+}) => {
+  'type': 'state_update',
+  'state': _serializeState(
+    state,
+    localEnginePlayerId: localEnginePlayerId,
+    engineToRoomIds: engineToRoomIds,
+  ),
+};
 
 Map<String, dynamic> _serializeState(
   GameState state, {
   String? localEnginePlayerId,
   Map<String, String>? engineToRoomIds,
-}) =>
-    {
-      'phase': state.phase.name,
-      'lives': state.lives,
-      'round_number': state.roundNumber,
-      'discard_pile': state.discardPile.map((c) => c.value).toList(),
-      'game_initialized': true,
-      'players': state.players
-          .map((p) => {
-                'id': engineToRoomIds?[p.id] ?? p.id,
-                'name': p.name,
-                'hand_size': p.hand.cards.length,
-                // Only include actual card values for the local player
-                'hand': p.id == localEnginePlayerId
-                    ? p.hand.cards.map((c) => c.value).toList()
-                    : <int>[],
-              })
-          .toList(),
-    };
+}) => {
+  'phase': state.phase.name,
+  'lives': state.lives,
+  'round_number': state.roundNumber,
+  'discard_pile': state.discardPile.map((c) => c.value).toList(),
+  'game_initialized': true,
+  'players': state.players
+      .map(
+        (p) => {
+          'id': engineToRoomIds?[p.id] ?? p.id,
+          'name': p.name,
+          'hand_size': p.hand.cards.length,
+          // Only include actual card values for the local player, sorted descending
+          'hand': p.id == localEnginePlayerId
+              ? (p.hand.cards.map((c) => c.value).toList()
+                  ..sort((a, b) => b.compareTo(a)))
+              : <int>[],
+        },
+      )
+      .toList(),
+};
 
 String encode(Map<String, dynamic> msg) => jsonEncode(msg);

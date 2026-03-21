@@ -20,9 +20,7 @@ Handler _buildHandler(RoomManager rooms) {
   final router = Router()
     ..get(
       '/ws',
-      webSocketHandler(
-        (WebSocketChannel ws) => _onConnection(ws, rooms),
-      ),
+      webSocketHandler((WebSocketChannel ws) => _onConnection(ws, rooms)),
     )
     ..get('/health', (_) => Response.ok('ok\n'));
   return Pipeline().addMiddleware(logRequests()).addHandler(router.call);

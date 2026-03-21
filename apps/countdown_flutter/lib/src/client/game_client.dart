@@ -44,19 +44,18 @@ class ClientState {
     List<PlayerSnapshot>? players,
     String? lastError,
     bool? gameInitialized,
-  }) =>
-      ClientState(
-        connectionStatus: connectionStatus ?? this.connectionStatus,
-        roomCode: roomCode ?? this.roomCode,
-        playerId: playerId ?? this.playerId,
-        phase: phase ?? this.phase,
-        lives: lives ?? this.lives,
-        roundNumber: roundNumber ?? this.roundNumber,
-        discardPile: discardPile ?? this.discardPile,
-        players: players ?? this.players,
-        lastError: lastError,
-        gameInitialized: gameInitialized ?? this.gameInitialized,
-      );
+  }) => ClientState(
+    connectionStatus: connectionStatus ?? this.connectionStatus,
+    roomCode: roomCode ?? this.roomCode,
+    playerId: playerId ?? this.playerId,
+    phase: phase ?? this.phase,
+    lives: lives ?? this.lives,
+    roundNumber: roundNumber ?? this.roundNumber,
+    discardPile: discardPile ?? this.discardPile,
+    players: players ?? this.players,
+    lastError: lastError,
+    gameInitialized: gameInitialized ?? this.gameInitialized,
+  );
 
   /// Cards in my hand (hand_size is the count, but only the server knows the
   /// actual values — the server sends each player's hand to their own client
@@ -78,13 +77,12 @@ class PlayerSnapshot {
     this.hand = const [],
   });
 
-  factory PlayerSnapshot.fromJson(Map<String, dynamic> json) =>
-      PlayerSnapshot(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        handSize: json['hand_size'] as int,
-        hand: (json['hand'] as List?)?.cast<int>() ?? [],
-      );
+  factory PlayerSnapshot.fromJson(Map<String, dynamic> json) => PlayerSnapshot(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    handSize: json['hand_size'] as int,
+    hand: (json['hand'] as List?)?.cast<int>() ?? [],
+  );
 }
 
 // ── Sink abstraction (injectable for testing) ─────────────────────────────
@@ -150,15 +148,19 @@ class GameClient extends ChangeNotifier {
     final msg = jsonDecode(raw) as Map<String, dynamic>;
     switch (msg['type'] as String) {
       case 'room_created':
-        _update(_state.copyWith(
-          roomCode: msg['room_code'] as String,
-          playerId: msg['player_id'] as String,
-        ));
+        _update(
+          _state.copyWith(
+            roomCode: msg['room_code'] as String,
+            playerId: msg['player_id'] as String,
+          ),
+        );
       case 'room_joined':
-        _update(_state.copyWith(
-          roomCode: msg['room_code'] as String,
-          playerId: msg['player_id'] as String,
-        ));
+        _update(
+          _state.copyWith(
+            roomCode: msg['room_code'] as String,
+            playerId: msg['player_id'] as String,
+          ),
+        );
       case 'state_update':
         _applyStateUpdate(msg['state'] as Map<String, dynamic>);
       case 'error':
@@ -174,30 +176,30 @@ class GameClient extends ChangeNotifier {
         .toList();
     final discard = (s['discard_pile'] as List).cast<int>();
 
-    _update(_state.copyWith(
-      phase: phase,
-      lives: s['lives'] as int,
-      roundNumber: s['round_number'] as int,
-      discardPile: discard,
-      players: players,
-      gameInitialized: s['game_initialized'] as bool? ?? false,
-    ));
+    _update(
+      _state.copyWith(
+        phase: phase,
+        lives: s['lives'] as int,
+        roundNumber: s['round_number'] as int,
+        discardPile: discard,
+        players: players,
+        gameInitialized: s['game_initialized'] as bool? ?? false,
+      ),
+    );
   }
 
   GamePhase _parsePhase(String raw) => switch (raw) {
-        'lobby' => GamePhase.lobby,
-        'round' => GamePhase.round,
-        'gameOver' => GamePhase.gameOver,
-        'won' => GamePhase.won,
-        _ => GamePhase.lobby,
-      };
+    'lobby' => GamePhase.lobby,
+    'round' => GamePhase.round,
+    'gameOver' => GamePhase.gameOver,
+    'won' => GamePhase.won,
+    _ => GamePhase.lobby,
+  };
 
   void _onDisconnect() {
     _sub = null;
     _sink = null;
-    _update(_state.copyWith(
-      connectionStatus: ConnectionStatus.disconnected,
-    ));
+    _update(_state.copyWith(connectionStatus: ConnectionStatus.disconnected));
   }
 
   void _update(ClientState next) {

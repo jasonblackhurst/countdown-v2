@@ -7,8 +7,9 @@ class Hand {
 
   List<GameCard> get cards => List.unmodifiable(_cards);
 
-  GameCard? get highest =>
-      _cards.isEmpty ? null : _cards.reduce((a, b) => a.value > b.value ? a : b);
+  GameCard? get highest => _cards.isEmpty
+      ? null
+      : _cards.reduce((a, b) => a.value > b.value ? a : b);
 
   bool remove(GameCard card) => _cards.remove(card);
 

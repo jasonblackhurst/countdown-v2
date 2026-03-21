@@ -49,7 +49,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
             Expanded(
               child: ListView.separated(
                 itemCount: players.length,
-                separatorBuilder: (_, __) => const Divider(),
+                separatorBuilder: (_, _) => const Divider(),
                 itemBuilder: (_, i) => ListTile(
                   leading: const Icon(Icons.person),
                   title: Text(players[i].name),

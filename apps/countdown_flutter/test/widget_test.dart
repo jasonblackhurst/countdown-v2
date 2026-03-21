@@ -43,22 +43,22 @@ Map<String, dynamic> _stateUpdate({
   List<int> discardPile = const [],
   List<Map<String, dynamic>>? players,
   bool gameInitialized = false,
-}) =>
-    {
-      'type': 'state_update',
-      'state': {
-        'phase': phase,
-        'lives': lives,
-        'round_number': roundNumber,
-        'discard_pile': discardPile,
-        'game_initialized': gameInitialized,
-        'players': players ??
-            [
-              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
-            ],
-      },
-    };
+}) => {
+  'type': 'state_update',
+  'state': {
+    'phase': phase,
+    'lives': lives,
+    'round_number': roundNumber,
+    'discard_pile': discardPile,
+    'game_initialized': gameInitialized,
+    'players':
+        players ??
+        [
+          {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+          {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+        ],
+  },
+};
 
 // ── GameClient unit tests ─────────────────────────────────────────────────
 
@@ -83,47 +83,57 @@ void main() {
     });
 
     test('2. room_created message stores roomCode and playerId', () async {
-      controller.add(jsonEncode({
-        'type': 'room_created',
-        'room_code': 'ABCD',
-        'player_id': 'pid-1',
-      }));
+      controller.add(
+        jsonEncode({
+          'type': 'room_created',
+          'room_code': 'ABCD',
+          'player_id': 'pid-1',
+        }),
+      );
       await Future.microtask(() {});
       expect(client.state.roomCode, 'ABCD');
       expect(client.state.playerId, 'pid-1');
     });
 
     test('3. room_joined message stores roomCode and playerId', () async {
-      controller.add(jsonEncode({
-        'type': 'room_joined',
-        'room_code': 'WXYZ',
-        'player_id': 'pid-2',
-      }));
+      controller.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'WXYZ',
+          'player_id': 'pid-2',
+        }),
+      );
       await Future.microtask(() {});
       expect(client.state.roomCode, 'WXYZ');
       expect(client.state.playerId, 'pid-2');
     });
 
-    test('4. state_update message applies phase, lives, round, players', () async {
-      controller.add(jsonEncode(_stateUpdate(
-        phase: 'round',
-        lives: 4,
-        roundNumber: 2,
-        discardPile: [100, 99],
-      )));
-      await Future.microtask(() {});
-      expect(client.state.phase, GamePhase.round);
-      expect(client.state.lives, 4);
-      expect(client.state.roundNumber, 2);
-      expect(client.state.discardPile, [100, 99]);
-      expect(client.state.players, hasLength(2));
-    });
+    test(
+      '4. state_update message applies phase, lives, round, players',
+      () async {
+        controller.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              lives: 4,
+              roundNumber: 2,
+              discardPile: [100, 99],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+        expect(client.state.phase, GamePhase.round);
+        expect(client.state.lives, 4);
+        expect(client.state.roundNumber, 2);
+        expect(client.state.discardPile, [100, 99]);
+        expect(client.state.players, hasLength(2));
+      },
+    );
 
     test('5. error message stores lastError', () async {
-      controller.add(jsonEncode({
-        'type': 'error',
-        'message': 'Room not found',
-      }));
+      controller.add(
+        jsonEncode({'type': 'error', 'message': 'Room not found'}),
+      );
       await Future.microtask(() {});
       expect(client.state.lastError, 'Room not found');
     });
@@ -163,42 +173,46 @@ void main() {
       expect(client.state.connectionStatus, ConnectionStatus.disconnected);
     });
 
-    test('12. myPlayer returns the snapshot whose id matches playerId', () async {
-      controller.add(jsonEncode({
-        'type': 'room_joined',
-        'room_code': 'ABCD',
-        'player_id': 'p2',
-      }));
-      await Future.microtask(() {});
-      controller.add(jsonEncode(_stateUpdate()));
-      await Future.microtask(() {});
-      expect(client.state.myPlayer?.name, 'Bob');
-    });
+    test(
+      '12. myPlayer returns the snapshot whose id matches playerId',
+      () async {
+        controller.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p2',
+          }),
+        );
+        await Future.microtask(() {});
+        controller.add(jsonEncode(_stateUpdate()));
+        await Future.microtask(() {});
+        expect(client.state.myPlayer?.name, 'Bob');
+      },
+    );
   });
 
   // ── Widget tests ──────────────────────────────────────────────────────────
 
-  Widget _wrap(Widget child, GameClient client) => MaterialApp(
-        home: ListenableBuilder(
-          listenable: client,
-          builder: (_, __) => child,
-        ),
-      );
+  Widget wrap(Widget child, GameClient client) => MaterialApp(
+    home: ListenableBuilder(listenable: client, builder: (_, _) => child),
+  );
 
   group('HomeScreen', () {
     testWidgets('13. shows Create Room and Join Room buttons', (tester) async {
       final client = GameClient();
-      await tester.pumpWidget(_wrap(HomeScreen(client: client), client));
+      await tester.pumpWidget(wrap(HomeScreen(client: client), client));
       expect(find.text('Create Room'), findsOneWidget);
       expect(find.text('Join Room'), findsOneWidget);
       client.dispose();
     });
 
-    testWidgets('14. tapping Create Room calls client.createRoom()', (tester) async {
+    testWidgets('14. tapping Create Room calls client.createRoom()', (
+      tester,
+    ) async {
       final client = GameClient();
       final (sink, ctrl) = connectFake(client);
 
-      await tester.pumpWidget(_wrap(HomeScreen(client: client), client));
+      await tester.pumpWidget(wrap(HomeScreen(client: client), client));
       await tester.tap(find.text('Create Room'));
       await tester.pump();
 
@@ -213,14 +227,25 @@ void main() {
       final client = GameClient();
       final (_, ctrl) = connectFake(client);
 
-      ctrl.add(jsonEncode(
-          {'type': 'room_created', 'room_code': 'TEST', 'player_id': 'p1'}));
-      ctrl.add(jsonEncode(_stateUpdate(players: [
-        {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-      ])));
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_created',
+          'room_code': 'TEST',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
       await Future.microtask(() {});
 
-      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
+      await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
       await tester.pump();
 
       expect(find.text('TEST'), findsOneWidget);
@@ -231,111 +256,158 @@ void main() {
   });
 
   group('LobbyScreen game_initialized', () {
-    testWidgets('A. pre-game (game_initialized: false, 2 players) shows Start Game, not vote UI', (tester) async {
-      final client = GameClient();
-      final (_, ctrl) = connectFake(client);
+    testWidgets(
+      'A. pre-game (game_initialized: false, 2 players) shows Start Game, not vote UI',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
 
-      ctrl.add(jsonEncode(
-          {'type': 'room_created', 'room_code': 'ABCD', 'player_id': 'p1'}));
-      ctrl.add(jsonEncode(_stateUpdate(
-        phase: 'lobby',
-        roundNumber: 0,
-        gameInitialized: false,
-        players: [
-          {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-          {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
-        ],
-      )));
-      await Future.microtask(() {});
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_created',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'lobby',
+              roundNumber: 0,
+              gameInitialized: false,
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
 
-      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
-      await tester.pump();
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
+        await tester.pump();
 
-      expect(find.text('Start Game'), findsOneWidget);
-      expect(find.text('Confirm Vote'), findsNothing);
-      await ctrl.close();
-      client.dispose();
-    });
+        expect(find.text('Start Game'), findsOneWidget);
+        expect(find.text('Confirm Vote'), findsNothing);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
 
-    testWidgets('B. post-startGame (game_initialized: true, phase lobby) shows vote UI, not Start Game', (tester) async {
-      final client = GameClient();
-      final (_, ctrl) = connectFake(client);
+    testWidgets(
+      'B. post-startGame (game_initialized: true, phase lobby) shows vote UI, not Start Game',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
 
-      ctrl.add(jsonEncode(
-          {'type': 'room_created', 'room_code': 'ABCD', 'player_id': 'p1'}));
-      ctrl.add(jsonEncode(_stateUpdate(
-        phase: 'lobby',
-        roundNumber: 0,
-        gameInitialized: true,
-        players: [
-          {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-          {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
-        ],
-      )));
-      await Future.microtask(() {});
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_created',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'lobby',
+              roundNumber: 0,
+              gameInitialized: true,
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
 
-      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
-      await tester.pump();
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
+        await tester.pump();
 
-      expect(find.text('Start Game'), findsNothing);
-      expect(find.text('Confirm Vote'), findsOneWidget);
-      await ctrl.close();
-      client.dispose();
-    });
+        expect(find.text('Start Game'), findsNothing);
+        expect(find.text('Confirm Vote'), findsOneWidget);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
   });
 
   group('LobbyScreen between-rounds', () {
-    testWidgets('17. shows vote chips (not Start Game) when roundNumber > 0 and phase is lobby', (tester) async {
-      final client = GameClient();
-      final (_, ctrl) = connectFake(client);
+    testWidgets(
+      '17. shows vote chips (not Start Game) when roundNumber > 0 and phase is lobby',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
 
-      ctrl.add(jsonEncode(
-          {'type': 'room_created', 'room_code': 'ABCD', 'player_id': 'p1'}));
-      // phase=lobby but roundNumber=1 → between rounds
-      ctrl.add(jsonEncode(_stateUpdate(
-        phase: 'lobby',
-        roundNumber: 1,
-        players: [
-          {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-          {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
-        ],
-      )));
-      await Future.microtask(() {});
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_created',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        // phase=lobby but roundNumber=1 → between rounds
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'lobby',
+              roundNumber: 1,
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
 
-      await tester.pumpWidget(_wrap(LobbyScreen(client: client), client));
-      await tester.pump();
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
+        await tester.pump();
 
-      expect(find.text('Start Game'), findsNothing);
-      expect(find.text('Confirm Vote'), findsOneWidget);
-      await ctrl.close();
-      client.dispose();
-    });
+        expect(find.text('Start Game'), findsNothing);
+        expect(find.text('Confirm Vote'), findsOneWidget);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
   });
 
   group('GameScreen', () {
-    testWidgets('16. shows lives, round number, and hand cards', (tester) async {
+    testWidgets('16. shows lives, round number, and hand cards', (
+      tester,
+    ) async {
       final client = GameClient();
       final (_, ctrl) = connectFake(client);
 
-      ctrl.add(jsonEncode(
-          {'type': 'room_joined', 'room_code': 'ABCD', 'player_id': 'p1'}));
-      ctrl.add(jsonEncode(_stateUpdate(
-        phase: 'round',
-        lives: 3,
-        roundNumber: 2,
-        players: [
-          {
-            'id': 'p1',
-            'name': 'Alice',
-            'hand_size': 2,
-            'hand': [75, 42]
-          },
-          {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
-        ],
-      )));
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            lives: 3,
+            roundNumber: 2,
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 2,
+                'hand': [75, 42],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
+            ],
+          ),
+        ),
+      );
       await Future.microtask(() {});
 
-      await tester.pumpWidget(_wrap(GameScreen(client: client), client));
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
       await tester.pump();
 
       expect(find.text('3'), findsOneWidget); // lives

@@ -7,5 +7,5 @@ class Player {
   Hand hand;
 
   Player({required this.id, required this.name, List<GameCard>? cards})
-      : hand = Hand(cards ?? []);
+    : hand = Hand(cards ?? []);
 }

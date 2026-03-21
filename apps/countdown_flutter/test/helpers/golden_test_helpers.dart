@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:countdown_core/countdown_core.dart';
 import 'package:countdown_flutter/src/client/game_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,21 +40,24 @@ Future<void> sendStateUpdate(
   List<Map<String, dynamic>>? players,
   bool gameInitialized = false,
 }) async {
-  controller.add(jsonEncode({
-    'type': 'state_update',
-    'state': {
-      'phase': phase,
-      'lives': lives,
-      'round_number': roundNumber,
-      'discard_pile': discardPile,
-      'game_initialized': gameInitialized,
-      'players': players ??
-          [
-            {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-            {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
-          ],
-    },
-  }));
+  controller.add(
+    jsonEncode({
+      'type': 'state_update',
+      'state': {
+        'phase': phase,
+        'lives': lives,
+        'round_number': roundNumber,
+        'discard_pile': discardPile,
+        'game_initialized': gameInitialized,
+        'players':
+            players ??
+            [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+      },
+    }),
+  );
   await Future.microtask(() {});
 }
 
@@ -66,11 +68,9 @@ Future<void> sendRoomEvent(
   String roomCode = 'TEST',
   String playerId = 'p1',
 }) async {
-  controller.add(jsonEncode({
-    'type': type,
-    'room_code': roomCode,
-    'player_id': playerId,
-  }));
+  controller.add(
+    jsonEncode({'type': type, 'room_code': roomCode, 'player_id': playerId}),
+  );
   await Future.microtask(() {});
 }
 
@@ -118,10 +118,7 @@ Future<void> pumpScreen(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      home: ListenableBuilder(
-        listenable: client,
-        builder: (_, __) => screen,
-      ),
+      home: ListenableBuilder(listenable: client, builder: (_, _) => screen),
       debugShowCheckedModeBanner: false,
     ),
   );
@@ -150,7 +147,11 @@ void testGoldenAcrossViewports({
   required String description,
   required String goldenPrefix,
   required Widget Function(GameClient client) screenBuilder,
-  required Future<void> Function(GameClient client, StreamController<String> controller) setup,
+  required Future<void> Function(
+    GameClient client,
+    StreamController<String> controller,
+  )
+  setup,
 }) {
   for (final viewport in TestViewport.values) {
     testWidgets('$description - ${viewport.name}', (tester) async {

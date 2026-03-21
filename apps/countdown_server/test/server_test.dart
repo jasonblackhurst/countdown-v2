@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:countdown_core/countdown_core.dart';
-import 'package:countdown_server/src/room.dart';
 import 'package:countdown_server/src/room_manager.dart';
 import 'package:test/test.dart';
 
@@ -13,7 +12,8 @@ class _RecordingSink implements StreamSink<String> {
   bool closed = false;
 
   @override
-  void add(String event) => received.add(jsonDecode(event) as Map<String, dynamic>);
+  void add(String event) =>
+      received.add(jsonDecode(event) as Map<String, dynamic>);
 
   @override
   void addError(Object error, [StackTrace? stackTrace]) {}
@@ -31,20 +31,6 @@ class _RecordingSink implements StreamSink<String> {
 
   Iterable<Map<String, dynamic>> msgsOfType(String type) =>
       received.where((m) => m['type'] == type);
-}
-
-// ── Helper ────────────────────────────────────────────────────────────────
-
-Room _startedRoom({int players = 2}) {
-  final manager = RoomManager();
-  final room = manager.createRoom();
-  final sinks = List.generate(players, (_) => _RecordingSink());
-  final ids = [
-    for (var i = 0; i < players; i++)
-      room.addPlayer('Player${i + 1}', sinks[i])
-  ];
-  room.startGame(ids.first); // host starts game
-  return room;
 }
 
 void main() {
@@ -79,21 +65,27 @@ void main() {
   // ── Room – lobby & setup ──────────────────────────────────────────────────
 
   group('Room setup', () {
-    test('5a. addPlayer broadcasts lobby state_update to all existing players', () {
-      final manager = RoomManager();
-      final room = manager.createRoom();
-      final sink1 = _RecordingSink();
-      room.addPlayer('Alice', sink1);
+    test(
+      '5a. addPlayer broadcasts lobby state_update to all existing players',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sink1 = _RecordingSink();
+        room.addPlayer('Alice', sink1);
 
-      final sink2 = _RecordingSink();
-      room.addPlayer('Bob', sink2);
+        final sink2 = _RecordingSink();
+        room.addPlayer('Bob', sink2);
 
-      // Alice should have received a lobby update when Bob joined
-      final aliceUpdates = sink1.msgsOfType('state_update').toList();
-      expect(aliceUpdates, isNotEmpty);
-      final players = aliceUpdates.last['state']['players'] as List;
-      expect(players.map((p) => (p as Map)['name']), containsAll(['Alice', 'Bob']));
-    });
+        // Alice should have received a lobby update when Bob joined
+        final aliceUpdates = sink1.msgsOfType('state_update').toList();
+        expect(aliceUpdates, isNotEmpty);
+        final players = aliceUpdates.last['state']['players'] as List;
+        expect(
+          players.map((p) => (p as Map)['name']),
+          containsAll(['Alice', 'Bob']),
+        );
+      },
+    );
 
     test('5. addPlayer returns a player ID and accepts a sink', () {
       final manager = RoomManager();
@@ -220,7 +212,8 @@ void main() {
 
       // Map engine player ID back to room player ID
       final roomPlayerId = ids.firstWhere(
-        (id) => room.playerIdForEngineId(holderId) == id ||
+        (id) =>
+            room.playerIdForEngineId(holderId) == id ||
             room.engineIdForPlayerId(id) == holderId,
       );
 
@@ -252,8 +245,9 @@ void main() {
       final wrongHolder = room.state.players.firstWhere(
         (p) => p.hand.cards.any((c) => c != globalHighest),
       );
-      final wrongCard =
-          wrongHolder.hand.cards.firstWhere((c) => c != globalHighest);
+      final wrongCard = wrongHolder.hand.cards.firstWhere(
+        (c) => c != globalHighest,
+      );
 
       final roomPlayerId = ids.firstWhere(
         (id) => room.engineIdForPlayerId(id) == wrongHolder.id,
@@ -263,60 +257,63 @@ void main() {
       expect(room.state.lives, 4);
     });
 
-    test('14. state_update includes hand values for the receiving player only', () {
-      final manager = RoomManager();
-      final room = manager.createRoom();
-      final sinks = [_RecordingSink(), _RecordingSink()];
-      final ids = [
-        room.addPlayer('Alice', sinks[0]),
-        room.addPlayer('Bob', sinks[1]),
-      ];
-      room.startGame(ids.first);
-      room.voteCardCount(ids[0], 2);
-      room.voteCardCount(ids[1], 2);
+    test(
+      '14. state_update includes hand values for the receiving player only',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+        room.startGame(ids.first);
+        room.voteCardCount(ids[0], 2);
+        room.voteCardCount(ids[1], 2);
 
-      // Alice's state_update should contain her own hand values
-      final aliceUpdate = sinks[0].msgsOfType('state_update').last;
-      final alicePlayers = aliceUpdate['state']['players'] as List;
-      final aliceEntry = alicePlayers.firstWhere(
-        (p) => ids[0] == (p as Map)['id'],
-      ) as Map;
-      expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
+        // Alice's state_update should contain her own hand values
+        final aliceUpdate = sinks[0].msgsOfType('state_update').last;
+        final alicePlayers = aliceUpdate['state']['players'] as List;
+        final aliceEntry =
+            alicePlayers.firstWhere((p) => ids[0] == (p as Map)['id']) as Map;
+        expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
 
-      // Alice's view of Bob should have an empty hand list
-      final bobEntry = alicePlayers.firstWhere(
-        (p) => ids[1] == (p as Map)['id'],
-      ) as Map;
-      expect(bobEntry['hand'], isEmpty);
-    });
+        // Alice's view of Bob should have an empty hand list
+        final bobEntry =
+            alicePlayers.firstWhere((p) => ids[1] == (p as Map)['id']) as Map;
+        expect(bobEntry['hand'], isEmpty);
+      },
+    );
 
-    test('15. after all hands are played, phase resets to lobby for re-voting', () {
-      final manager = RoomManager();
-      final room = manager.createRoom();
-      final sinks = [_RecordingSink(), _RecordingSink()];
-      final ids = [
-        room.addPlayer('Alice', sinks[0]),
-        room.addPlayer('Bob', sinks[1]),
-      ];
-      room.startGame(ids.first);
-      room.voteCardCount(ids[0], 1);
-      room.voteCardCount(ids[1], 1);
+    test(
+      '15. after all hands are played, phase resets to lobby for re-voting',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+        room.startGame(ids.first);
+        room.voteCardCount(ids[0], 1);
+        room.voteCardCount(ids[1], 1);
 
-      // Play both cards in the correct order (highest first)
-      final allCards = room.state.players
-          .expand((p) => p.hand.cards)
-          .toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+        // Play both cards in the correct order (highest first)
+        final allCards = room.state.players.expand((p) => p.hand.cards).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
-      for (final card in allCards) {
-        final engineHolder = room.state.players
-            .firstWhere((p) => p.hand.cards.contains(card));
-        final roomId = room.playerIdForEngineId(engineHolder.id)!;
-        room.playCard(roomId, card);
-      }
+        for (final card in allCards) {
+          final engineHolder = room.state.players.firstWhere(
+            (p) => p.hand.cards.contains(card),
+          );
+          final roomId = room.playerIdForEngineId(engineHolder.id)!;
+          room.playCard(roomId, card);
+        }
 
-      expect(room.state.phase, GamePhase.lobby);
-    });
+        expect(room.state.phase, GamePhase.lobby);
+      },
+    );
 
     test('17. addPlayer lobby state_update has game_initialized: false', () {
       final manager = RoomManager();
@@ -396,26 +393,28 @@ void main() {
       );
     });
 
-    test('20. myPlayer can be identified from state_update using the room player ID', () {
-      final manager = RoomManager();
-      final room = manager.createRoom();
-      final sinks = [_RecordingSink(), _RecordingSink()];
-      final ids = [
-        room.addPlayer('Alice', sinks[0]),
-        room.addPlayer('Bob', sinks[1]),
-      ];
-      room.startGame(ids.first);
-      room.voteCardCount(ids[0], 1);
-      room.voteCardCount(ids[1], 1);
+    test(
+      '20. myPlayer can be identified from state_update using the room player ID',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+        room.startGame(ids.first);
+        room.voteCardCount(ids[0], 1);
+        room.voteCardCount(ids[1], 1);
 
-      final lastUpdate = sinks[0].msgsOfType('state_update').last;
-      final players = lastUpdate['state']['players'] as List;
+        final lastUpdate = sinks[0].msgsOfType('state_update').last;
+        final players = lastUpdate['state']['players'] as List;
 
-      // Alice's entry (identified by room UUID) should have a non-empty hand
-      final aliceEntry = players.firstWhere(
-        (p) => (p as Map)['id'] == ids[0],
-      ) as Map;
-      expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
-    });
+        // Alice's entry (identified by room UUID) should have a non-empty hand
+        final aliceEntry =
+            players.firstWhere((p) => (p as Map)['id'] == ids[0]) as Map;
+        expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
+      },
+    );
   });
 }

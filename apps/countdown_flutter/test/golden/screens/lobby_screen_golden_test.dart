@@ -10,16 +10,17 @@ void main() {
       goldenPrefix: 'lobby_screen_pregame',
       screenBuilder: (client) => LobbyScreen(client: client),
       setup: (client, controller) async {
-        await sendRoomEvent(controller,
-            roomCode: 'ABCD', playerId: 'p1');
-        await sendStateUpdate(controller,
-            phase: 'lobby',
-            roundNumber: 0,
-            gameInitialized: false,
-            players: [
-              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
-            ]);
+        await sendRoomEvent(controller, roomCode: 'ABCD', playerId: 'p1');
+        await sendStateUpdate(
+          controller,
+          phase: 'lobby',
+          roundNumber: 0,
+          gameInitialized: false,
+          players: [
+            {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+            {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+          ],
+        );
       },
     );
 
@@ -28,16 +29,17 @@ void main() {
       goldenPrefix: 'lobby_screen_between_rounds',
       screenBuilder: (client) => LobbyScreen(client: client),
       setup: (client, controller) async {
-        await sendRoomEvent(controller,
-            roomCode: 'ABCD', playerId: 'p1');
-        await sendStateUpdate(controller,
-            phase: 'lobby',
-            roundNumber: 2,
-            gameInitialized: true,
-            players: [
-              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
-              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
-            ]);
+        await sendRoomEvent(controller, roomCode: 'ABCD', playerId: 'p1');
+        await sendStateUpdate(
+          controller,
+          phase: 'lobby',
+          roundNumber: 2,
+          gameInitialized: true,
+          players: [
+            {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+            {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+          ],
+        );
       },
     );
   });

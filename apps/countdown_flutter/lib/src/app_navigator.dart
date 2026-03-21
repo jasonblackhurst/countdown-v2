@@ -63,7 +63,7 @@ class _CountdownAppState extends State<CountdownApp> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _client,
-      builder: (context, __) {
+      builder: (context, _) {
         final state = _client.state;
 
         // Show error SnackBar when a new error arrives from the server
@@ -71,9 +71,9 @@ class _CountdownAppState extends State<CountdownApp> {
           _lastShownError = state.lastError;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.lastError!)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.lastError!)));
             }
           });
         }

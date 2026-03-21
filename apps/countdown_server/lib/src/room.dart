@@ -30,10 +30,8 @@ class Room {
   int get playerCount => _connections.length;
   bool get isEmpty => _connections.isEmpty;
 
-  String? playerIdForEngineId(String engineId) =>
-      _engineIdToPlayerId[engineId];
-  String? engineIdForPlayerId(String playerId) =>
-      _playerIdToEngineId[playerId];
+  String? playerIdForEngineId(String engineId) => _engineIdToPlayerId[engineId];
+  String? engineIdForPlayerId(String playerId) => _playerIdToEngineId[playerId];
 
   /// Adds a new player to the lobby. Returns the assigned player UUID.
   String addPlayer(String name, Sink sink) {
@@ -57,8 +55,9 @@ class Room {
     }
 
     _started = true;
-    final orderedNames =
-        _connections.map((c) => _pendingPlayers[c.playerId]!).toList();
+    final orderedNames = _connections
+        .map((c) => _pendingPlayers[c.playerId]!)
+        .toList();
     _engine.startGame(orderedNames);
 
     for (var i = 0; i < _connections.length; i++) {
@@ -117,12 +116,14 @@ class Room {
   /// Sends a pre-game lobby snapshot — used before the engine is initialized.
   void _broadcastLobbyState() {
     final players = _connections
-        .map((c) => {
-              'id': c.playerId,
-              'name': _pendingPlayers[c.playerId] ?? '',
-              'hand_size': 0,
-              'hand': <int>[],
-            })
+        .map(
+          (c) => {
+            'id': c.playerId,
+            'name': _pendingPlayers[c.playerId] ?? '',
+            'hand_size': 0,
+            'hand': <int>[],
+          },
+        )
         .toList();
 
     final msg = encode({
@@ -145,11 +146,13 @@ class Room {
   void _broadcastState() {
     for (final conn in _connections) {
       final engineId = _playerIdToEngineId[conn.playerId];
-      final msg = encode(stateUpdateMsg(
-        _engine.state,
-        localEnginePlayerId: engineId,
-        engineToRoomIds: _engineIdToPlayerId,
-      ));
+      final msg = encode(
+        stateUpdateMsg(
+          _engine.state,
+          localEnginePlayerId: engineId,
+          engineToRoomIds: _engineIdToPlayerId,
+        ),
+      );
       conn.sink.add(msg);
     }
   }
