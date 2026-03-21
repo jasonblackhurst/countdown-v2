@@ -5,12 +5,12 @@ steps:
       - '-f'
       - 'apps/countdown_server/Dockerfile'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/countdown-server'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/countdown-server'
       - '.'
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/countdown-server'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/countdown-server'
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     args:
       - 'gcloud'
@@ -18,7 +18,7 @@ steps:
       - 'deploy'
       - 'countdown-v2'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/countdown-server'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/countdown-server'
       - '--region'
       - 'us-central1'
       - '--port'
@@ -27,4 +27,4 @@ steps:
 options:
   logging: CLOUD_LOGGING_ONLY
 images:
-  - 'gcr.io/$PROJECT_ID/countdown-server'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/countdown-server'
