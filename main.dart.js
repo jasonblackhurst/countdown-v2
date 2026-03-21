@@ -24586,7 +24586,7 @@ aBY(a,b){var s,r,q
 for(s=A.bQ(a,a.r,A.j(a).c),r=s.$ti.c;s.v();){q=s.d
 if(q==null)q=r.a(q)
 if(b.$1(q))return q}return null},
-aJH(){var s,r,q,p,o,n,m,l,k,j,i,h=null,g=A.t6(h,A.aqP(B.a0,h,h,B.Iq),!0),f=A.m6("ws://localhost:8080/ws")
+aJH(){var s,r,q,p,o,n,m,l,k,j,i,h=null,g=A.t6(h,A.aqP(B.a0,h,h,B.Iq),!0),f=A.m6("wss://countdown-v2-616407912526.us-central1.run.app/ws")
 if($.W==null){s=t.GA
 r=A.d([],s)
 s=A.d([],s)
@@ -25278,7 +25278,7 @@ $S:2}
 A.ala.prototype={
 $1(a){var s=A.cO().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/e4b8dca3f1b4ede4c30371002441c88c12187ed6/":s)+a},
+return(s==null?"https://www.gstatic.com/flutter-canvaskit/052f31d115eceda8cbff1b3481fcde4330c4ae12/":s)+a},
 $S:157}
 A.Ga.prototype={
 Ty(){var s=this.a7L(),r=$.aY.bC().ImageFilter.MakeColorFilter(s,null)
