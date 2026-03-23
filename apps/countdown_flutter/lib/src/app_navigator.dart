@@ -7,6 +7,7 @@ import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/lobby_screen.dart';
 import 'screens/pile_screen.dart';
+import 'screens/round_transition_screen.dart';
 
 class _WsMessageSink implements MessageSink {
   final WebSocketChannel _channel;
@@ -36,11 +37,16 @@ class CountdownApp extends StatefulWidget {
 class _CountdownAppState extends State<CountdownApp> {
   late final GameClient _client;
   String? _lastShownError;
+  bool _showRoundTransition = false;
+  int _transitionRoundNumber = 0;
+  int _transitionCardsPlayed = 0;
+  int _transitionLives = 5;
 
   @override
   void initState() {
     super.initState();
     _client = GameClient();
+    _client.addListener(_onClientUpdate);
     _connectWs();
   }
 
@@ -53,8 +59,27 @@ class _CountdownAppState extends State<CountdownApp> {
     );
   }
 
+  void _onClientUpdate() {
+    final state = _client.state;
+    final prev = _client.previousPhase;
+
+    // Detect round -> lobby transition with roundNumber > 0
+    if (prev == GamePhase.round &&
+        state.phase == GamePhase.lobby &&
+        (state.roundNumber ?? 0) > 0 &&
+        !_showRoundTransition) {
+      setState(() {
+        _showRoundTransition = true;
+        _transitionRoundNumber = state.roundNumber ?? 0;
+        _transitionCardsPlayed = state.discardPile?.length ?? 0;
+        _transitionLives = state.lives ?? 5;
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _client.removeListener(_onClientUpdate);
     _client.dispose();
     super.dispose();
   }
@@ -84,6 +109,15 @@ class _CountdownAppState extends State<CountdownApp> {
 
         if (state.roomCode == null) {
           return HomeScreen(client: _client);
+        }
+
+        if (_showRoundTransition) {
+          return RoundTransitionScreen(
+            roundNumber: _transitionRoundNumber,
+            cardsPlayed: _transitionCardsPlayed,
+            lives: _transitionLives,
+            onContinue: () => setState(() => _showRoundTransition = false),
+          );
         }
 
         final phase = state.phase;
