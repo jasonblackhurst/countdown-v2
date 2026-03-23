@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'src/app_navigator.dart';
+import 'src/theme.dart';
 
 const _wsUrl = String.fromEnvironment(
   'WS_URL',
@@ -11,10 +12,7 @@ void main() {
   runApp(
     MaterialApp(
       title: 'Countdown',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: countdownTheme(),
       home: CountdownApp(serverUri: Uri.parse(_wsUrl)),
     ),
   );

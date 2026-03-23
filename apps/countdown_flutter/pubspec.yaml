@@ -36,6 +36,7 @@ dependencies:
   web_socket_channel: ^3.0.2
   countdown_core:
     path: ../../packages/countdown_core
+  google_fonts: ^8.0.2
 
 dev_dependencies:
   flutter_test:

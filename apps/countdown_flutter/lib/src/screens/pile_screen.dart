@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../client/game_client.dart';
+import '../theme.dart';
 
 /// Full-screen discard pile display. Read-only — no hand, no play button.
 class PileScreen extends StatelessWidget {
@@ -14,7 +15,7 @@ class PileScreen extends StatelessWidget {
     final lastPlayed = discard.isNotEmpty ? discard.last : null;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: kBackgroundColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

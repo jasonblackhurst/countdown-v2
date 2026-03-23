@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:countdown_flutter/src/client/game_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // ── Test doubles (shared with widget_test.dart pattern) ──────────────────────
 
@@ -98,11 +99,17 @@ void setupViewport(WidgetTester tester, TestViewport viewport) {
   });
 }
 
-/// Suppresses RenderFlex overflow errors for the current test.
+/// Suppresses RenderFlex overflow errors and GoogleFonts async errors.
 void suppressOverflowErrors() {
   final originalOnError = FlutterError.onError;
   FlutterError.onError = (details) {
-    if (details.toString().contains('overflowed')) return;
+    final msg = details.toString();
+    if (msg.contains('overflowed') ||
+        msg.contains('google_fonts') ||
+        msg.contains('GoogleFonts') ||
+        msg.contains('PlayfairDisplay')) {
+      return;
+    }
     originalOnError?.call(details);
   };
   addTearDown(() => FlutterError.onError = originalOnError);
@@ -118,6 +125,7 @@ Future<void> pumpScreen(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      theme: ThemeData.dark(useMaterial3: true),
       home: ListenableBuilder(listenable: client, builder: (_, _) => screen),
       debugShowCheckedModeBanner: false,
     ),
@@ -155,6 +163,7 @@ void testGoldenAcrossViewports({
 }) {
   for (final viewport in TestViewport.values) {
     testWidgets('$description - ${viewport.name}', (tester) async {
+      GoogleFonts.config.allowRuntimeFetching = false;
       final client = GameClient();
       final (_, controller) = connectFake(client);
 
