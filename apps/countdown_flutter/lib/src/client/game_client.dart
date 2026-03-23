@@ -19,6 +19,8 @@ class ClientState {
   final List<PlayerSnapshot>? players;
   final String? lastError;
   final bool gameInitialized;
+  final bool isFinalRound;
+  final int? cardsRemaining;
 
   const ClientState({
     this.connectionStatus = ConnectionStatus.disconnected,
@@ -31,6 +33,8 @@ class ClientState {
     this.players,
     this.lastError,
     this.gameInitialized = false,
+    this.isFinalRound = false,
+    this.cardsRemaining,
   });
 
   ClientState copyWith({
@@ -44,6 +48,8 @@ class ClientState {
     List<PlayerSnapshot>? players,
     String? lastError,
     bool? gameInitialized,
+    bool? isFinalRound,
+    int? cardsRemaining,
   }) => ClientState(
     connectionStatus: connectionStatus ?? this.connectionStatus,
     roomCode: roomCode ?? this.roomCode,
@@ -55,6 +61,8 @@ class ClientState {
     players: players ?? this.players,
     lastError: lastError,
     gameInitialized: gameInitialized ?? this.gameInitialized,
+    isFinalRound: isFinalRound ?? this.isFinalRound,
+    cardsRemaining: cardsRemaining ?? this.cardsRemaining,
   );
 
   /// Cards in my hand (hand_size is the count, but only the server knows the
@@ -184,6 +192,8 @@ class GameClient extends ChangeNotifier {
         discardPile: discard,
         players: players,
         gameInitialized: s['game_initialized'] as bool? ?? false,
+        isFinalRound: s['is_final_round'] as bool? ?? false,
+        cardsRemaining: s['cards_remaining'] as int?,
       ),
     );
   }

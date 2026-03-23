@@ -134,6 +134,8 @@ class Room {
         'round_number': 0,
         'discard_pile': <int>[],
         'game_initialized': false,
+        'is_final_round': false,
+        'cards_remaining': 100,
         'players': players,
       },
     });

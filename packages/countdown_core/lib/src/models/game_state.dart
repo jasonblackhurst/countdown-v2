@@ -11,6 +11,7 @@ class GameState {
   final List<GameCard> discardPile;
   GamePhase phase;
   int roundNumber;
+  bool isFinalRound;
 
   GameState({
     required this.lives,
@@ -19,5 +20,6 @@ class GameState {
     List<GameCard>? discardPile,
     this.phase = GamePhase.lobby,
     this.roundNumber = 0,
+    this.isFinalRound = false,
   }) : discardPile = discardPile ?? [];
 }

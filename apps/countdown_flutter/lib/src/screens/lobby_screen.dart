@@ -60,6 +60,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            if (showVote &&
+                state.cardsRemaining != null &&
+                state.cardsRemaining! < players.length * 2) ...[
+              Text(
+                'Final round — cards may be dealt unevenly',
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.orange.shade700),
+              ),
+              const SizedBox(height: 8),
+            ],
             if (!showVote) ...[
               FilledButton(
                 onPressed: players.length >= 2

@@ -69,6 +69,18 @@ class GameScreen extends StatelessWidget {
                       ),
               ),
 
+              // ── Final round callout ─────────────────────────────────────
+              if (state.isFinalRound)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Final round! Some players have extra cards.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.orange.shade700,
+                    ),
+                  ),
+                ),
               // ── End-of-round / game-over banners ────────────────────────
               if (state.phase == GamePhase.won)
                 _Banner(

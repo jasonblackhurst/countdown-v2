@@ -27,17 +27,43 @@ class GameEngine {
   }
 
   void startRound(int cardsPerPlayer) {
-    final needed = cardsPerPlayer * state.players.length;
-    if (needed > state.deck.cardsRemaining) {
-      throw StateError(
-        'Cannot start round: need $needed cards but only '
-        '${state.deck.cardsRemaining} remain',
-      );
-    }
+    final playerCount = state.players.length;
+    final basePerPlayer =
+        cardsPerPlayer < state.deck.cardsRemaining ~/ playerCount
+        ? cardsPerPlayer
+        : state.deck.cardsRemaining ~/ playerCount;
+    final evenTotal = basePerPlayer * playerCount;
+    final leftover = state.deck.cardsRemaining - evenTotal;
 
-    final hands = state.deck.deal(cardsPerPlayer, state.players.length);
-    for (var i = 0; i < state.players.length; i++) {
-      state.players[i].hand = Hand(hands[i]);
+    if (basePerPlayer == 0 && leftover == 0) {
+      // No cards at all
+      for (final player in state.players) {
+        player.hand = Hand([]);
+      }
+      state.isFinalRound = false;
+    } else if (leftover > 0 && leftover < playerCount) {
+      // Absorb: first `leftover` players get basePerPlayer + 1
+      final counts = List.generate(playerCount, (i) {
+        return i < leftover ? basePerPlayer + 1 : basePerPlayer;
+      });
+      final hands = state.deck.dealUneven(counts);
+      for (var i = 0; i < playerCount; i++) {
+        state.players[i].hand = Hand(hands[i]);
+      }
+      state.isFinalRound = true;
+    } else {
+      // Even deal (leftover == 0 or leftover >= playerCount)
+      if (basePerPlayer == 0) {
+        for (final player in state.players) {
+          player.hand = Hand([]);
+        }
+      } else {
+        final hands = state.deck.deal(basePerPlayer, playerCount);
+        for (var i = 0; i < playerCount; i++) {
+          state.players[i].hand = Hand(hands[i]);
+        }
+      }
+      state.isFinalRound = false;
     }
 
     state.roundNumber++;
