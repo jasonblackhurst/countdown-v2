@@ -593,4 +593,240 @@ void main() {
       },
     );
   });
+
+  // ── Play Again / Leave Room ──────────────────────────────────────────────
+
+  group('GameClient play again', () {
+    late GameClient client;
+    late _FakeSink sink;
+    late StreamController<String> controller;
+
+    setUp(() {
+      client = GameClient();
+      (sink, controller) = connectFake(client);
+    });
+
+    tearDown(() {
+      controller.close();
+      client.dispose();
+    });
+
+    test('24. playAgain() sends correct JSON', () {
+      client.playAgain();
+      expect(sink.lastSent(), {'type': 'play_again'});
+    });
+
+    test('25. disconnect() resets state so navigator shows HomeScreen', () {
+      // Simulate being in a room
+      controller.add(
+        jsonEncode({
+          'type': 'room_created',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+
+      client.disconnect();
+      expect(client.state.roomCode, isNull);
+      expect(client.state.connectionStatus, ConnectionStatus.disconnected);
+    });
+  });
+
+  group('GameScreen play again buttons', () {
+    testWidgets('26. shows Play Again button when phase is won', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'won',
+            lives: 5,
+            roundNumber: 10,
+            discardPile: List.generate(100, (i) => 100 - i),
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Play Again'), findsOneWidget);
+      expect(find.text('Leave Room'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('27. shows Play Again button when phase is gameOver', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'gameOver',
+            lives: 0,
+            roundNumber: 3,
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Play Again'), findsOneWidget);
+      expect(find.text('Leave Room'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('28. does NOT show Play Again button during active round', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            lives: 5,
+            roundNumber: 1,
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 2,
+                'hand': [75, 42],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Play Again'), findsNothing);
+      expect(find.text('Leave Room'), findsNothing);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('29. tapping Play Again sends play_again message', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (sink, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'won',
+            lives: 5,
+            roundNumber: 10,
+            discardPile: List.generate(100, (i) => 100 - i),
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      await tester.tap(find.text('Play Again'));
+      await tester.pump();
+
+      expect(sink.sent.any((m) => m['type'] == 'play_again'), isTrue);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('30. tapping Leave Room calls disconnect', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'gameOver',
+            lives: 0,
+            roundNumber: 3,
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      await tester.tap(find.text('Leave Room'));
+      await tester.pump();
+
+      // After disconnect, roomCode should be null
+      expect(client.state.roomCode, isNull);
+      // Close controller before dispose to avoid hanging futures
+      unawaited(ctrl.close());
+      client.dispose();
+    });
+  });
 }

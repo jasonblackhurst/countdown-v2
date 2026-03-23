@@ -146,6 +146,8 @@ class GameClient extends ChangeNotifier {
 
   void playCard(int value) => _send({'type': 'play_card', 'value': value});
 
+  void playAgain() => _send({'type': 'play_again'});
+
   void _send(Map<String, dynamic> msg) {
     _sink?.send(jsonEncode(msg));
   }

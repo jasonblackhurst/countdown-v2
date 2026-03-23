@@ -18,6 +18,7 @@ sealed class ClientMessage {
       'start_game' => const StartGameMsg(),
       'vote_card_count' => VoteCardCountMsg(map['count'] as int),
       'play_card' => PlayCardMsg(GameCard(map['value'] as int)),
+      'play_again' => const PlayAgainMsg(),
       _ => throw FormatException('Unknown message type: ${map['type']}'),
     };
   }
@@ -45,6 +46,10 @@ class VoteCardCountMsg extends ClientMessage {
 class PlayCardMsg extends ClientMessage {
   final GameCard card;
   const PlayCardMsg(this.card);
+}
+
+class PlayAgainMsg extends ClientMessage {
+  const PlayAgainMsg();
 }
 
 // ── Outgoing message builders ─────────────────────────────────────────────
