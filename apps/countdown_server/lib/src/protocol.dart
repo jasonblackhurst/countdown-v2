@@ -89,6 +89,8 @@ Map<String, dynamic> _serializeState(
   'round_number': state.roundNumber,
   'discard_pile': state.discardPile.map((c) => c.value).toList(),
   'game_initialized': true,
+  'is_final_round': state.isFinalRound,
+  'cards_remaining': state.deck.cardsRemaining,
   'players': state.players
       .map(
         (p) => {

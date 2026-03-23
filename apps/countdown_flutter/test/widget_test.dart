@@ -43,6 +43,8 @@ Map<String, dynamic> _stateUpdate({
   List<int> discardPile = const [],
   List<Map<String, dynamic>>? players,
   bool gameInitialized = false,
+  bool isFinalRound = false,
+  int cardsRemaining = 100,
 }) => {
   'type': 'state_update',
   'state': {
@@ -51,6 +53,8 @@ Map<String, dynamic> _stateUpdate({
     'round_number': roundNumber,
     'discard_pile': discardPile,
     'game_initialized': gameInitialized,
+    'is_final_round': isFinalRound,
+    'cards_remaining': cardsRemaining,
     'players':
         players ??
         [
@@ -417,5 +421,176 @@ void main() {
       await ctrl.close();
       client.dispose();
     });
+
+    testWidgets('20. shows final-round callout when isFinalRound is true', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            lives: 5,
+            roundNumber: 3,
+            isFinalRound: true,
+            cardsRemaining: 0,
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 3,
+                'hand': [10, 5, 2],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(
+        find.text('Final round! Some players have extra cards.'),
+        findsOneWidget,
+      );
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets(
+      '21. does NOT show final-round callout when isFinalRound is false',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
+
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              lives: 5,
+              roundNumber: 2,
+              isFinalRound: false,
+              cardsRemaining: 50,
+              players: [
+                {
+                  'id': 'p1',
+                  'name': 'Alice',
+                  'hand_size': 2,
+                  'hand': [75, 42],
+                },
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        await tester.pumpWidget(wrap(GameScreen(client: client), client));
+        await tester.pump();
+
+        expect(
+          find.text('Final round! Some players have extra cards.'),
+          findsNothing,
+        );
+        await ctrl.close();
+        client.dispose();
+      },
+    );
+  });
+
+  group('LobbyScreen final-round callout', () {
+    testWidgets(
+      '22. shows final-round callout when cardsRemaining is low and voting',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
+
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_created',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'lobby',
+              roundNumber: 1,
+              gameInitialized: true,
+              cardsRemaining: 3, // < 2 * 2 players = 4
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
+        await tester.pump();
+
+        expect(find.textContaining('Final round'), findsOneWidget);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
+
+    testWidgets(
+      '23. does NOT show final-round callout when cardsRemaining is high',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
+
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_created',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'lobby',
+              roundNumber: 1,
+              gameInitialized: true,
+              cardsRemaining: 50,
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        await tester.pumpWidget(wrap(LobbyScreen(client: client), client));
+        await tester.pump();
+
+        expect(find.textContaining('Final round'), findsNothing);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
   });
 }

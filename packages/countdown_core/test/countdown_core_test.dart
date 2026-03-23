@@ -170,6 +170,70 @@ void main() {
     });
 
     test(
+      '15. startRound caps cardsPerPlayer when deck cannot satisfy request',
+      () {
+        // Deal 96 cards (48 rounds × 2 players × 1 card), leaving 4 in deck
+        for (var i = 0; i < 48; i++) {
+          engine.startRound(1);
+        }
+        expect(engine.cardsRemaining(), 4);
+
+        // Request 3 each (need 6), but only 4 remain → should cap to 2 each
+        engine.startRound(3);
+        for (final player in engine.state.players) {
+          expect(player.hand.cards.length, 2);
+        }
+        expect(engine.cardsRemaining(), 0);
+      },
+    );
+
+    test(
+      '16. startRound with odd remainder absorbs leftover (7 cards, 3 players, vote 3)',
+      () {
+        final engine3 = GameEngine();
+        engine3.startGame(['Alice', 'Bob', 'Carol'], random: Random(42));
+
+        // Deal 93 cards: 31 rounds × 3 players × 1 card
+        for (var i = 0; i < 31; i++) {
+          engine3.startRound(1);
+        }
+        expect(engine3.cardsRemaining(), 7);
+
+        // Request 3 each (need 9), only 7 remain → base = 2, leftover = 1
+        // 0 < 1 < 3 → absorb: first player gets 3, rest get 2
+        engine3.startRound(3);
+        expect(engine3.state.players[0].hand.cards.length, 3);
+        expect(engine3.state.players[1].hand.cards.length, 2);
+        expect(engine3.state.players[2].hand.cards.length, 2);
+        expect(engine3.cardsRemaining(), 0);
+        expect(engine3.state.isFinalRound, isTrue);
+      },
+    );
+
+    test(
+      '17. 4 cards remaining, 3 players, vote 1 → absorb: first gets 2, rest get 1, isFinalRound true',
+      () {
+        final engine3 = GameEngine();
+        engine3.startGame(['Alice', 'Bob', 'Carol'], random: Random(42));
+
+        // Deal 96 cards: 32 rounds × 3 players × 1 card
+        for (var i = 0; i < 32; i++) {
+          engine3.startRound(1);
+        }
+        expect(engine3.cardsRemaining(), 4);
+
+        // 4 cards remaining, 3 players, vote 1: base = 1, even = 3, leftover = 1
+        // 0 < 1 < 3 → absorb: first player gets 2, rest get 1
+        engine3.startRound(1);
+        expect(engine3.state.players[0].hand.cards.length, 2);
+        expect(engine3.state.players[1].hand.cards.length, 1);
+        expect(engine3.state.players[2].hand.cards.length, 1);
+        expect(engine3.cardsRemaining(), 0);
+        expect(engine3.state.isFinalRound, isTrue);
+      },
+    );
+
+    test(
       '14. two sequential rounds deal from correct deck position (no overlap, no gap)',
       () {
         engine.startRound(2);
@@ -188,6 +252,125 @@ void main() {
 
         expect(round1Cards.intersection(round2Cards), isEmpty);
         expect(engine.cardsRemaining(), 92); // 100 - 4 - 4
+      },
+    );
+  });
+
+  // ── Deck.dealUneven ─────────────────────────────────────────────────────
+
+  group('Deck.dealUneven', () {
+    test(
+      'A. dealUneven([3, 2, 2]) gives correct card counts, no overlap, correct cardsRemaining',
+      () {
+        final deck = Deck(random: Random(42));
+        final hands = deck.dealUneven([3, 2, 2]);
+        expect(hands.length, 3);
+        expect(hands[0].length, 3);
+        expect(hands[1].length, 2);
+        expect(hands[2].length, 2);
+
+        // No overlap between any players
+        final allValues = hands.expand((h) => h.map((c) => c.value)).toList();
+        expect(allValues.toSet().length, allValues.length);
+
+        expect(deck.cardsRemaining, 93); // 100 - 7
+      },
+    );
+
+    test('B. dealUneven throws when total exceeds remaining', () {
+      final deck = Deck(random: Random(42));
+      deck.deal(98, 1); // 2 remaining
+      expect(() => deck.dealUneven([2, 2]), throwsStateError);
+    });
+  });
+
+  // ── Uneven final round ──────────────────────────────────────────────────
+
+  group('Uneven final round', () {
+    test(
+      'C. 3 players, 7 remaining, vote 2 → absorb: one gets 3, two get 2, isFinalRound true',
+      () {
+        final engine = GameEngine();
+        engine.startGame(['Alice', 'Bob', 'Carol'], random: Random(42));
+
+        // Deal 93 cards: 31 rounds × 3 players × 1 card
+        for (var i = 0; i < 31; i++) {
+          engine.startRound(1);
+        }
+        expect(engine.cardsRemaining(), 7);
+
+        // vote 2: base = min(2, 7~/3) = 2, evenTotal = 6, leftover = 1
+        // 0 < 1 < 3 → absorb: first player gets 3, rest get 2
+        engine.startRound(2);
+        expect(engine.state.players[0].hand.cards.length, 3);
+        expect(engine.state.players[1].hand.cards.length, 2);
+        expect(engine.state.players[2].hand.cards.length, 2);
+        expect(engine.cardsRemaining(), 0);
+        expect(engine.state.isFinalRound, isTrue);
+      },
+    );
+
+    test(
+      'D. 2 players, 10 remaining, vote 3 → no absorption (leftover >= playerCount), isFinalRound false',
+      () {
+        final engine = GameEngine();
+        engine.startGame(['Alice', 'Bob'], random: Random(42));
+
+        // Deal 90 cards: 45 rounds × 2 players × 1 card
+        for (var i = 0; i < 45; i++) {
+          engine.startRound(1);
+        }
+        expect(engine.cardsRemaining(), 10);
+
+        // vote 3: base = min(3, 10~/2) = 3, evenTotal = 6, leftover = 4
+        // 4 >= 2 → no absorption, deal evenly
+        engine.startRound(3);
+        expect(engine.state.players[0].hand.cards.length, 3);
+        expect(engine.state.players[1].hand.cards.length, 3);
+        expect(engine.cardsRemaining(), 4);
+        expect(engine.state.isFinalRound, isFalse);
+      },
+    );
+
+    test('E. Even deal exhausts deck exactly → isFinalRound false', () {
+      final engine = GameEngine();
+      engine.startGame(['Alice', 'Bob'], random: Random(42));
+
+      // Deal 96 cards: 48 rounds × 2 players × 1 card
+      for (var i = 0; i < 48; i++) {
+        engine.startRound(1);
+      }
+      expect(engine.cardsRemaining(), 4);
+
+      // vote 2: base = min(2, 4~/2) = 2, evenTotal = 4, leftover = 0
+      // leftover == 0 → deal evenly, no absorption
+      engine.startRound(2);
+      expect(engine.state.players[0].hand.cards.length, 2);
+      expect(engine.state.players[1].hand.cards.length, 2);
+      expect(engine.cardsRemaining(), 0);
+      expect(engine.state.isFinalRound, isFalse);
+    });
+
+    test(
+      'F. 3 players, 10 remaining, vote 4 → absorb: one gets 4, two get 3, isFinalRound true',
+      () {
+        final engine = GameEngine();
+        engine.startGame(['Alice', 'Bob', 'Carol'], random: Random(42));
+
+        // Deal 90 cards: 30 rounds × 3 players × 1 card
+        for (var i = 0; i < 30; i++) {
+          engine.startRound(1);
+        }
+        expect(engine.cardsRemaining(), 10);
+
+        // vote 4: base = min(4, 10~/3=3) = 3, even = 9, leftover = 1
+        // 0 < 1 < 3 → absorb: first player gets 4, rest get 3
+        engine.startRound(4);
+        expect(engine.state.players[0].hand.cards.length, 4);
+        expect(engine.state.players[1].hand.cards.length, 3);
+        expect(engine.state.players[2].hand.cards.length, 3);
+        expect(engine.cardsRemaining(), 0);
+        expect(engine.state.isFinalRound, isTrue);
       },
     );
   });
