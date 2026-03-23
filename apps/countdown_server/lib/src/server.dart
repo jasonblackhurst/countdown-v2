@@ -112,10 +112,22 @@ void _handle(
       final result = room.playCard(pid, card);
       if (result == PlayResult.win) {
         print('Room $rc: game WON!');
-        rooms.removeRoom(rc);
       } else if (result == PlayResult.gameOver) {
         print('Room $rc: game OVER');
-        rooms.removeRoom(rc);
       }
+
+    case PlayAgainMsg():
+      final rc = roomCode;
+      final pid = playerId;
+      if (rc == null || pid == null) {
+        sink.add(encode(errorMsg('Not in a room')));
+        return;
+      }
+      final room = rooms.getRoom(rc);
+      if (room == null) {
+        sink.add(encode(errorMsg('Room $rc not found')));
+        return;
+      }
+      room.resetForPlayAgain();
   }
 }

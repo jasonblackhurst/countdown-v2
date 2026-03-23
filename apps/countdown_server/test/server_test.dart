@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:countdown_core/countdown_core.dart';
+import 'package:countdown_server/src/protocol.dart';
 import 'package:countdown_server/src/room_manager.dart';
 import 'package:test/test.dart';
 
@@ -416,5 +417,105 @@ void main() {
         expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
       },
     );
+  });
+
+  // ── Room – play again ────────────────────────────────────────────────────
+
+  group('Room play again', () {
+    test(
+      '21. resetForPlayAgain resets phase to lobby with fresh engine state',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+        room.startGame(ids.first);
+        room.voteCardCount(ids[0], 1);
+        room.voteCardCount(ids[1], 1);
+
+        // Play incorrectly to lose a life
+        final globalHighest = room.state.players
+            .expand((p) => p.hand.cards)
+            .reduce((a, b) => a.value > b.value ? a : b);
+        final wrongHolder = room.state.players.firstWhere(
+          (p) => p.hand.cards.any((c) => c != globalHighest),
+        );
+        final wrongCard = wrongHolder.hand.cards.firstWhere(
+          (c) => c != globalHighest,
+        );
+        final roomPlayerId = ids.firstWhere(
+          (id) => room.engineIdForPlayerId(id) == wrongHolder.id,
+        );
+        room.playCard(roomPlayerId, wrongCard);
+        expect(room.state.lives, 4); // sanity check
+
+        // Now reset
+        room.resetForPlayAgain();
+
+        // Phase should be lobby
+        expect(room.state.phase, GamePhase.lobby);
+        // Lives should be back to 5
+        expect(room.state.lives, 5);
+        // Discard pile should be empty
+        expect(room.state.discardPile, isEmpty);
+        // Round number should be 0
+        expect(room.state.roundNumber, 0);
+      },
+    );
+
+    test(
+      '22. resetForPlayAgain broadcasts lobby state_update to all players',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+        room.startGame(ids.first);
+
+        final countBefore = sinks[0].msgsOfType('state_update').length;
+        room.resetForPlayAgain();
+        final countAfter = sinks[0].msgsOfType('state_update').length;
+
+        expect(countAfter, greaterThan(countBefore));
+
+        // The broadcast state should show lobby phase
+        final lastUpdate = sinks[0].msgsOfType('state_update').last;
+        expect(lastUpdate['state']['phase'], 'lobby');
+        expect(lastUpdate['state']['lives'], 5);
+        expect(lastUpdate['state']['round_number'], 0);
+        expect(lastUpdate['state']['game_initialized'], isTrue);
+      },
+    );
+
+    test('23. resetForPlayAgain keeps all connected players', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.resetForPlayAgain();
+
+      // Both players should still be connected
+      expect(room.playerCount, 2);
+
+      // Should be able to start a new game and vote
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+      expect(room.state.phase, GamePhase.round);
+    });
+
+    test('24. play_again message is parsed by ClientMessage.parse', () {
+      final msg = ClientMessage.parse('{"type": "play_again"}');
+      expect(msg, isA<PlayAgainMsg>());
+    });
   });
 }

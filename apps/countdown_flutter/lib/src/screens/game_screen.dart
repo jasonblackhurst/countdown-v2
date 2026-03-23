@@ -92,6 +92,26 @@ class GameScreen extends StatelessWidget {
                   text: 'Game over — no lives left.',
                   color: Colors.red.shade700,
                 ),
+              // ── Play Again / Leave Room buttons ───────────────────────
+              if (state.phase == GamePhase.won ||
+                  state.phase == GamePhase.gameOver)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => client.playAgain(),
+                        child: const Text('Play Again'),
+                      ),
+                      const SizedBox(width: 16),
+                      OutlinedButton(
+                        onPressed: () => client.disconnect(),
+                        child: const Text('Leave Room'),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),

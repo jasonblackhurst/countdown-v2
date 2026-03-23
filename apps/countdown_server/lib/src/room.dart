@@ -101,6 +101,29 @@ class Room {
     return result;
   }
 
+  /// Resets the room for a new game, keeping all connected players.
+  void resetForPlayAgain() {
+    _cardCountVotes.clear();
+    _engineIdToPlayerId.clear();
+    _playerIdToEngineId.clear();
+
+    // Re-initialize the engine with the same players
+    final orderedNames = _connections
+        .map((c) => _pendingPlayers[c.playerId]!)
+        .toList();
+    _engine.startGame(orderedNames);
+
+    // Rebuild the engine-to-room ID mappings
+    for (var i = 0; i < _connections.length; i++) {
+      final engineId = _engine.state.players[i].id;
+      final roomId = _connections[i].playerId;
+      _engineIdToPlayerId[engineId] = roomId;
+      _playerIdToEngineId[roomId] = engineId;
+    }
+
+    _broadcastState();
+  }
+
   void send(String playerId, Map<String, dynamic> msg) {
     final conn = _connections.firstWhere(
       (c) => c.playerId == playerId,
