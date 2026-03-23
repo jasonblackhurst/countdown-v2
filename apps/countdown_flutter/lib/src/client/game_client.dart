@@ -111,6 +111,10 @@ class GameClient extends ChangeNotifier {
   GamePhase? _previousPhase;
   GamePhase? get previousPhase => _previousPhase;
 
+  /// The lives count from the previous state update, used to detect life loss.
+  int? _previousLives;
+  int? get previousLives => _previousLives;
+
   StreamSubscription<String>? _sub;
   MessageSink? _sink;
 
@@ -221,6 +225,7 @@ class GameClient extends ChangeNotifier {
 
   void _update(ClientState next) {
     _previousPhase = _state.phase;
+    _previousLives = _state.lives;
     _state = next;
     notifyListeners();
   }

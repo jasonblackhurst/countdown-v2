@@ -13,14 +13,33 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late final ConfettiController _confettiController;
+  late final AnimationController _lifeLossController;
+  late final AnimationController _livesPulseController;
+  bool _showLifeLossFlash = false;
 
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 5),
+    );
+    _lifeLossController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _lifeLossController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() => _showLifeLossFlash = false);
+      }
+    });
+    _livesPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+      lowerBound: 0.8,
+      upperBound: 1.2,
+      value: 1.0,
     );
     // Start confetti if already in won phase
     if (widget.client.state.phase == GamePhase.won) {
@@ -33,12 +52,29 @@ class _GameScreenState extends State<GameScreen> {
     if (widget.client.state.phase == GamePhase.won) {
       _confettiController.play();
     }
+    // Detect life loss
+    final prevLives = widget.client.previousLives;
+    final curLives = widget.client.state.lives;
+    if (prevLives != null && curLives != null && curLives < prevLives) {
+      _triggerLifeLossFlash();
+    }
+  }
+
+  void _triggerLifeLossFlash() {
+    setState(() => _showLifeLossFlash = true);
+    _lifeLossController.forward(from: 0.0);
+    // Pulse the lives indicator
+    _livesPulseController.forward(from: 0.8).then((_) {
+      if (mounted) _livesPulseController.reverse();
+    });
   }
 
   @override
   void dispose() {
     widget.client.removeListener(_onStateChange);
     _confettiController.dispose();
+    _lifeLossController.dispose();
+    _livesPulseController.dispose();
     super.dispose();
   }
 
@@ -67,7 +103,11 @@ class _GameScreenState extends State<GameScreen> {
                         'Round ${state.roundNumber ?? 0}',
                         style: const TextStyle(fontSize: 18),
                       ),
-                      _LivesIndicator(lives: state.lives ?? 5),
+                      ScaleTransition(
+                        key: const Key('lives-indicator'),
+                        scale: _livesPulseController,
+                        child: _LivesIndicator(lives: state.lives ?? 5),
+                      ),
                       Text(
                         '${discard.length}/100 played',
                         style: TextStyle(
@@ -79,7 +119,16 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                   const SizedBox(height: 16),
                   // ── Last played card ───────────────────────────────────
-                  _LastPlayedCard(value: lastPlayed),
+                  AnimatedSwitcher(
+                    key: const Key('last-played-animated'),
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) =>
+                        ScaleTransition(scale: animation, child: child),
+                    child: _LastPlayedCard(
+                      key: ValueKey<int?>(lastPlayed),
+                      value: lastPlayed,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 8),
@@ -104,7 +153,7 @@ class _GameScreenState extends State<GameScreen> {
                                   childAspectRatio: 0.75,
                                 ),
                             itemCount: hand.length,
-                            itemBuilder: (_, i) => _CardTile(
+                            itemBuilder: (_, i) => _AnimatedCardTile(
                               value: hand[i],
                               onTap: state.phase == GamePhase.round
                                   ? () => widget.client.playCard(hand[i])
@@ -144,6 +193,19 @@ class _GameScreenState extends State<GameScreen> {
                 cardsPlayed: discard.length,
                 onPlayAgain: () => widget.client.playAgain(),
                 onLeaveRoom: () => widget.client.disconnect(),
+              ),
+
+            // ── Life-loss red flash ────────────────────────────────────
+            if (_showLifeLossFlash)
+              Positioned.fill(
+                key: const Key('life-loss-flash'),
+                child: FadeTransition(
+                  opacity: Tween<double>(
+                    begin: 0.35,
+                    end: 0.0,
+                  ).animate(_lifeLossController),
+                  child: IgnorePointer(child: Container(color: Colors.red)),
+                ),
               ),
           ],
         ),
@@ -351,7 +413,7 @@ class _LivesIndicator extends StatelessWidget {
 
 class _LastPlayedCard extends StatelessWidget {
   final int? value;
-  const _LastPlayedCard({this.value});
+  const _LastPlayedCard({super.key, this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -420,6 +482,65 @@ class _CardTile extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card tile wrapped with a scale animation for tap feedback.
+class _AnimatedCardTile extends StatefulWidget {
+  final int value;
+  final VoidCallback? onTap;
+  const _AnimatedCardTile({required this.value, this.onTap});
+
+  @override
+  State<_AnimatedCardTile> createState() => _AnimatedCardTileState();
+}
+
+class _AnimatedCardTileState extends State<_AnimatedCardTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+      value: 1.0,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    if (widget.onTap == null) return;
+    // Animate scale down, then fire the callback
+    _controller.animateTo(0.85, curve: Curves.easeIn).then((_) {
+      if (mounted) {
+        _controller.animateTo(1.0, curve: Curves.easeOut);
+      }
+    });
+    widget.onTap!();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedScale(
+      scale: 1.0,
+      duration: const Duration(milliseconds: 200),
+      child: ScaleTransition(
+        scale: _controller,
+        child: _CardTile(
+          value: widget.value,
+          onTap: widget.onTap != null ? _handleTap : null,
         ),
       ),
     );
