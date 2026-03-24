@@ -418,7 +418,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('3'), findsOneWidget); // lives
-      expect(find.text('Round 2'), findsOneWidget);
+      expect(find.text('R2'), findsOneWidget);
       expect(find.text('75'), findsOneWidget);
       expect(find.text('42'), findsOneWidget);
       await ctrl.close();

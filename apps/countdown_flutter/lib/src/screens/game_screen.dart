@@ -92,6 +92,68 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Widget _buildHandGrid(List<int> hand, ClientState state) {
+    if (hand.isEmpty) {
+      return const Center(child: Text('No cards'));
+    }
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 120,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: hand.length,
+      itemBuilder: (_, i) => _AnimatedCardTile(
+        value: hand[i],
+        onTap: state.phase == GamePhase.round
+            ? () {
+                if (!_soundService.isMuted) {
+                  _soundService.playCardSound();
+                }
+                widget.client.playCard(hand[i]);
+              }
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildDiscardArea(ClientState state, int? lastPlayed) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Recent play indicator ───────────────────────────
+        if (state.lastPlayedByName != null && state.lastPlayedCardValue != null)
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Text(
+              '${state.lastPlayedByName} played ${state.lastPlayedCardValue}',
+              key: ValueKey<String>(
+                '${state.lastPlayedByName}-${state.lastPlayedCardValue}',
+              ),
+              style: TextStyle(
+                fontSize: 14,
+                color: kAccentColor.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        const SizedBox(height: 8),
+        // ── Last played card ───────────────────────────────────
+        AnimatedSwitcher(
+          key: const Key('last-played-animated'),
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) =>
+              ScaleTransition(scale: animation, child: child),
+          child: _LastPlayedCard(
+            key: ValueKey<int?>(lastPlayed),
+            value: lastPlayed,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = widget.client.state;
@@ -106,52 +168,58 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           children: [
             // ── Normal game content ──────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Column(
                 children: [
-                  // ── Status bar ─────────────────────────────────────────
+                  // ── Compact status bar ──────────────────────────────────
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    key: const Key('compact-status-bar'),
                     children: [
                       Text(
-                        'Round ${state.roundNumber ?? 0}',
-                        style: const TextStyle(fontSize: 18),
+                        'R${state.roundNumber ?? 0}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       ScaleTransition(
                         key: const Key('lives-indicator'),
                         scale: _livesPulseController,
                         child: _LivesIndicator(lives: state.lives ?? 5),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${discard.length}/100 played',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white.withValues(alpha: 0.5),
-                            ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${discard.length}/100',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: IconButton(
+                          key: const Key('mute-toggle'),
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            _soundService.isMuted
+                                ? Icons.volume_off
+                                : Icons.volume_up,
+                            size: 18,
+                            color: Colors.white.withValues(alpha: 0.5),
                           ),
-                          IconButton(
-                            key: const Key('mute-toggle'),
-                            icon: Icon(
-                              _soundService.isMuted
-                                  ? Icons.volume_off
-                                  : Icons.volume_up,
-                              size: 20,
-                              color: Colors.white.withValues(alpha: 0.5),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _soundService.toggleMute();
-                              });
-                            },
-                          ),
-                        ],
+                          onPressed: () {
+                            setState(() {
+                              _soundService.toggleMute();
+                            });
+                          },
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   // ── Player bar ──────────────────────────────────────
                   _PlayerBar(
                     key: const Key('player-bar'),
@@ -159,86 +227,73 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     localPlayerId: state.playerId,
                     lastPlayedByName: state.lastPlayedByName,
                   ),
-                  const SizedBox(height: 8),
-                  // ── Recent play indicator ───────────────────────────
-                  if (state.lastPlayedByName != null &&
-                      state.lastPlayedCardValue != null)
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Text(
-                        '${state.lastPlayedByName} played ${state.lastPlayedCardValue}',
-                        key: ValueKey<String>(
-                          '${state.lastPlayedByName}-${state.lastPlayedCardValue}',
-                        ),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: kAccentColor.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  // ── Last played card ───────────────────────────────────
-                  AnimatedSwitcher(
-                    key: const Key('last-played-animated'),
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, animation) =>
-                        ScaleTransition(scale: animation, child: child),
-                    child: _LastPlayedCard(
-                      key: ValueKey<int?>(lastPlayed),
-                      value: lastPlayed,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Your hand',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // ── Hand ───────────────────────────────────────────────
+                  const SizedBox(height: 4),
+                  // ── Responsive layout ──────────────────────────────────
                   Expanded(
-                    child: hand.isEmpty
-                        ? const Center(child: Text('No cards'))
-                        : GridView.builder(
-                            gridDelegate:
-                                const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 120,
-                                  mainAxisSpacing: 8,
-                                  crossAxisSpacing: 8,
-                                  childAspectRatio: 0.75,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 600;
+                        if (isWide) {
+                          return Row(
+                            key: const Key('wide-layout'),
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Left: discard area
+                              Expanded(
+                                child: Center(
+                                  child: _buildDiscardArea(state, lastPlayed),
                                 ),
-                            itemCount: hand.length,
-                            itemBuilder: (_, i) => _AnimatedCardTile(
-                              value: hand[i],
-                              onTap: state.phase == GamePhase.round
-                                  ? () {
-                                      if (!_soundService.isMuted) {
-                                        _soundService.playCardSound();
-                                      }
-                                      widget.client.playCard(hand[i]);
-                                    }
-                                  : null,
-                            ),
-                          ),
-                  ),
-
-                  // ── Final round callout ────────────────────────────────
-                  if (state.isFinalRound)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'Final round! Some players have extra cards.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: Colors.amber),
-                      ),
+                              ),
+                              const SizedBox(width: 16),
+                              // Right: hand
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: _buildHandGrid(hand, state),
+                                    ),
+                                    if (state.isFinalRound)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4,
+                                        ),
+                                        child: Text(
+                                          'Final round! Some players have extra cards.',
+                                          textAlign: TextAlign.center,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(color: Colors.amber),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        // Narrow (phone) layout
+                        return Column(
+                          key: const Key('narrow-layout'),
+                          children: [
+                            _buildDiscardArea(state, lastPlayed),
+                            const SizedBox(height: 12),
+                            Expanded(child: _buildHandGrid(hand, state)),
+                            if (state.isFinalRound)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  'Final round! Some players have extra cards.',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: Colors.amber),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
+                  ),
                 ],
               ),
             ),
@@ -483,33 +538,39 @@ class _LastPlayedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 120,
-      width: 80,
+      key: const Key('last-played-card'),
+      height: 160,
+      width: 110,
       decoration: BoxDecoration(
         color: kCardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: kAccentColor.withValues(alpha: value != null ? 0.15 : 0.0),
+            blurRadius: 20,
+            spreadRadius: 2,
           ),
         ],
       ),
       alignment: Alignment.center,
       child: value == null
           ? Text(
-              '—',
+              '\u2014',
               style: TextStyle(
-                fontSize: 32,
+                fontSize: 36,
                 color: kCardTextColor.withValues(alpha: 0.4),
               ),
             )
           : Text(
               '$value',
               style: const TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
+                fontSize: 52,
+                fontWeight: FontWeight.w900,
                 color: kCardTextColor,
               ),
             ),
