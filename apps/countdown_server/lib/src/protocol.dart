@@ -75,12 +75,14 @@ Map<String, dynamic> stateUpdateMsg(
   GameState state, {
   String? localEnginePlayerId,
   Map<String, String>? engineToRoomIds,
+  Map<String, dynamic>? lastPlayedBy,
 }) => {
   'type': 'state_update',
   'state': _serializeState(
     state,
     localEnginePlayerId: localEnginePlayerId,
     engineToRoomIds: engineToRoomIds,
+    lastPlayedBy: lastPlayedBy,
   ),
 };
 
@@ -88,6 +90,7 @@ Map<String, dynamic> _serializeState(
   GameState state, {
   String? localEnginePlayerId,
   Map<String, String>? engineToRoomIds,
+  Map<String, dynamic>? lastPlayedBy,
 }) => {
   'phase': state.phase.name,
   'lives': state.lives,
@@ -96,6 +99,7 @@ Map<String, dynamic> _serializeState(
   'game_initialized': true,
   'is_final_round': state.isFinalRound,
   'cards_remaining': state.deck.cardsRemaining,
+  'last_played_by': lastPlayedBy,
   'players': state.players
       .map(
         (p) => {

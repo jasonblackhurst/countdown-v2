@@ -21,6 +21,8 @@ class ClientState {
   final bool gameInitialized;
   final bool isFinalRound;
   final int? cardsRemaining;
+  final String? lastPlayedByName;
+  final int? lastPlayedCardValue;
 
   const ClientState({
     this.connectionStatus = ConnectionStatus.disconnected,
@@ -35,6 +37,8 @@ class ClientState {
     this.gameInitialized = false,
     this.isFinalRound = false,
     this.cardsRemaining,
+    this.lastPlayedByName,
+    this.lastPlayedCardValue,
   });
 
   ClientState copyWith({
@@ -50,6 +54,8 @@ class ClientState {
     bool? gameInitialized,
     bool? isFinalRound,
     int? cardsRemaining,
+    String? Function()? lastPlayedByName,
+    int? Function()? lastPlayedCardValue,
   }) => ClientState(
     connectionStatus: connectionStatus ?? this.connectionStatus,
     roomCode: roomCode ?? this.roomCode,
@@ -63,6 +69,12 @@ class ClientState {
     gameInitialized: gameInitialized ?? this.gameInitialized,
     isFinalRound: isFinalRound ?? this.isFinalRound,
     cardsRemaining: cardsRemaining ?? this.cardsRemaining,
+    lastPlayedByName: lastPlayedByName != null
+        ? lastPlayedByName()
+        : this.lastPlayedByName,
+    lastPlayedCardValue: lastPlayedCardValue != null
+        ? lastPlayedCardValue()
+        : this.lastPlayedCardValue,
   );
 
   /// Cards in my hand (hand_size is the count, but only the server knows the
@@ -195,6 +207,14 @@ class GameClient extends ChangeNotifier {
         .toList();
     final discard = (s['discard_pile'] as List).cast<int>();
 
+    final lastPlayedByRaw = s['last_played_by'] as Map<String, dynamic>?;
+    final lastPlayedByName = lastPlayedByRaw != null
+        ? lastPlayedByRaw['name'] as String?
+        : null;
+    final lastPlayedCardValue = lastPlayedByRaw != null
+        ? lastPlayedByRaw['card_value'] as int?
+        : null;
+
     _update(
       _state.copyWith(
         phase: phase,
@@ -205,6 +225,8 @@ class GameClient extends ChangeNotifier {
         gameInitialized: s['game_initialized'] as bool? ?? false,
         isFinalRound: s['is_final_round'] as bool? ?? false,
         cardsRemaining: s['cards_remaining'] as int?,
+        lastPlayedByName: () => lastPlayedByName,
+        lastPlayedCardValue: () => lastPlayedCardValue,
       ),
     );
   }

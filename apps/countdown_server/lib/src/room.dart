@@ -23,6 +23,7 @@ class Room {
   final Map<String, String> _playerIdToEngineId = {};
   String? _hostPlayerId;
   bool _started = false;
+  Map<String, dynamic>? _lastPlayedBy;
 
   Room(this.code) : _engine = GameEngine();
 
@@ -88,7 +89,14 @@ class Room {
     final engineId = _playerIdToEngineId[playerId];
     if (engineId == null) throw StateError('Player not in engine: $playerId');
 
+    final playerName = _pendingPlayers[playerId] ?? '';
     final result = _engine.playCard(engineId, card);
+
+    _lastPlayedBy = {
+      'player_id': playerId,
+      'name': playerName,
+      'card_value': card.value,
+    };
 
     // If the round ended cleanly (not win/gameOver), reset to lobby so
     // clients know to vote for the next round.
@@ -106,6 +114,7 @@ class Room {
     _cardCountVotes.clear();
     _engineIdToPlayerId.clear();
     _playerIdToEngineId.clear();
+    _lastPlayedBy = null;
 
     // Re-initialize the engine with the same players
     final orderedNames = _connections
@@ -159,6 +168,7 @@ class Room {
         'game_initialized': false,
         'is_final_round': false,
         'cards_remaining': 100,
+        'last_played_by': null,
         'players': players,
       },
     });
@@ -176,6 +186,7 @@ class Room {
           _engine.state,
           localEnginePlayerId: engineId,
           engineToRoomIds: _engineIdToPlayerId,
+          lastPlayedBy: _lastPlayedBy,
         ),
       );
       conn.sink.add(msg);
