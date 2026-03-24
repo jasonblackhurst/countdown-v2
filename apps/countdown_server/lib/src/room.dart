@@ -13,10 +13,17 @@ class _ConnectedPlayer {
   _ConnectedPlayer(this.playerId, this.sink);
 }
 
+class _Spectator {
+  final String id;
+  final Sink sink;
+  _Spectator(this.id, this.sink);
+}
+
 class Room {
   final String code;
   final GameEngine _engine;
   final List<_ConnectedPlayer> _connections = [];
+  final List<_Spectator> _spectators = [];
   final Map<String, int> _cardCountVotes = {};
   final Map<String, String> _pendingPlayers = {}; // playerId → name
   final Map<String, String> _engineIdToPlayerId = {};
@@ -158,12 +165,40 @@ class Room {
     }
   }
 
+  /// Adds a spectator connection. Returns a spectator ID for later removal.
+  String addSpectator(Sink sink) {
+    final id = const Uuid().v4();
+    _spectators.add(_Spectator(id, sink));
+    // Send current state immediately
+    if (_started) {
+      _broadcastStateToSpectators();
+    } else {
+      _broadcastLobbyStateToSpectators();
+    }
+    return id;
+  }
+
+  void removeSpectator(String spectatorId) {
+    _spectators.removeWhere((s) => s.id == spectatorId);
+  }
+
   void removePlayer(String playerId) {
     _connections.removeWhere((c) => c.playerId == playerId);
   }
 
   /// Sends a pre-game lobby snapshot — used before the engine is initialized.
   void _broadcastLobbyState() {
+    final msg = _lobbyStateMsg();
+
+    for (final conn in _connections) {
+      conn.sink.add(msg);
+    }
+    for (final spec in _spectators) {
+      spec.sink.add(msg);
+    }
+  }
+
+  String _lobbyStateMsg() {
     final players = _connections
         .map(
           (c) => {
@@ -175,7 +210,7 @@ class Room {
         )
         .toList();
 
-    final msg = encode({
+    return encode({
       'type': 'state_update',
       'state': {
         'phase': 'lobby',
@@ -189,10 +224,6 @@ class Room {
         'players': players,
       },
     });
-
-    for (final conn in _connections) {
-      conn.sink.add(msg);
-    }
   }
 
   void _broadcastState() {
@@ -207,6 +238,30 @@ class Room {
         ),
       );
       conn.sink.add(msg);
+    }
+    _broadcastStateToSpectators();
+  }
+
+  void _broadcastStateToSpectators() {
+    if (_spectators.isEmpty) return;
+    // Spectators see no hands (localEnginePlayerId is null)
+    final msg = encode(
+      stateUpdateMsg(
+        _engine.state,
+        engineToRoomIds: _engineIdToPlayerId,
+        lastPlayedBy: _lastPlayedBy,
+      ),
+    );
+    for (final spec in _spectators) {
+      spec.sink.add(msg);
+    }
+  }
+
+  void _broadcastLobbyStateToSpectators() {
+    if (_spectators.isEmpty) return;
+    final msg = _lobbyStateMsg();
+    for (final spec in _spectators) {
+      spec.sink.add(msg);
     }
   }
 }

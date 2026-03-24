@@ -23,6 +23,7 @@ sealed class ClientMessage {
         roomCode: map['room_code'] as String,
         playerId: map['player_id'] as String,
       ),
+      'spectate_room' => SpectateRoomMsg(roomCode: map['room_code'] as String),
       _ => throw FormatException('Unknown message type: ${map['type']}'),
     };
   }
@@ -62,6 +63,11 @@ class RejoinRoomMsg extends ClientMessage {
   const RejoinRoomMsg({required this.roomCode, required this.playerId});
 }
 
+class SpectateRoomMsg extends ClientMessage {
+  final String roomCode;
+  const SpectateRoomMsg({required this.roomCode});
+}
+
 // ── Outgoing message builders ─────────────────────────────────────────────
 
 Map<String, dynamic> roomCreatedMsg(String roomCode, String playerId) => {
@@ -80,6 +86,12 @@ Map<String, dynamic> roomRejoinedMsg(String roomCode, String playerId) => {
   'type': 'room_rejoined',
   'room_code': roomCode,
   'player_id': playerId,
+};
+
+Map<String, dynamic> roomSpectatingMsg(String roomCode, String spectatorId) => {
+  'type': 'room_spectating',
+  'room_code': roomCode,
+  'spectator_id': spectatorId,
 };
 
 Map<String, dynamic> errorMsg(String message) => {

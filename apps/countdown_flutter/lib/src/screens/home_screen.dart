@@ -6,7 +6,8 @@ import 'tutorial_overlay.dart';
 
 class HomeScreen extends StatefulWidget {
   final GameClient client;
-  const HomeScreen({super.key, required this.client});
+  final VoidCallback? onSpectate;
+  const HomeScreen({super.key, required this.client, this.onSpectate});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -53,6 +54,32 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.pop(context);
             },
             child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSpectateDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Table Display'),
+        content: TextField(
+          controller: _codeController,
+          decoration: const InputDecoration(labelText: 'Room code'),
+          textCapitalization: TextCapitalization.characters,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              widget.client.spectateRoom(
+                _codeController.text.trim().toUpperCase(),
+              );
+              widget.onSpectate?.call();
+              Navigator.pop(context);
+            },
+            child: const Text('Watch'),
           ),
         ],
       ),
@@ -113,6 +140,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 OutlinedButton(
                   onPressed: _showJoinDialog,
                   child: const Text('Join Room'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: _showSpectateDialog,
+                  child: const Text('Table Display'),
                 ),
                 const SizedBox(height: 24),
                 TextButton(

@@ -30,15 +30,26 @@ void _onConnection(WebSocketChannel ws, RoomManager rooms) {
   final channel = ws.cast<String>();
   String? roomCode;
   String? playerId;
+  String? spectatorId;
 
   channel.stream.listen(
     (raw) {
       try {
         final msg = ClientMessage.parse(raw);
-        _handle(msg, channel.sink, roomCode, playerId, (rc, pid) {
-          roomCode = rc;
-          playerId = pid;
-        }, rooms);
+        _handle(
+          msg,
+          channel.sink,
+          roomCode,
+          playerId,
+          (rc, pid) {
+            roomCode = rc;
+            playerId = pid;
+          },
+          (specId) {
+            spectatorId = specId;
+          },
+          rooms,
+        );
       } catch (e) {
         channel.sink.add(encode(errorMsg(e.toString())));
       }
@@ -46,10 +57,16 @@ void _onConnection(WebSocketChannel ws, RoomManager rooms) {
     onDone: () {
       final rc = roomCode;
       final pid = playerId;
-      if (rc != null && pid != null) {
+      final specId = spectatorId;
+      if (rc != null) {
         final room = rooms.getRoom(rc);
         if (room != null) {
-          room.removePlayer(pid);
+          if (specId != null) {
+            room.removeSpectator(specId);
+          }
+          if (pid != null) {
+            room.removePlayer(pid);
+          }
           if (room.isEmpty) rooms.removeRoom(rc);
         }
       }
@@ -63,6 +80,7 @@ void _handle(
   String? roomCode,
   String? playerId,
   void Function(String rc, String pid) setContext,
+  void Function(String specId) setSpectatorId,
   RoomManager rooms,
 ) {
   switch (msg) {
@@ -143,5 +161,16 @@ void _handle(
       } on StateError catch (e) {
         sink.add(encode(errorMsg(e.message)));
       }
+
+    case SpectateRoomMsg(:final roomCode):
+      final room = rooms.getRoom(roomCode);
+      if (room == null) {
+        sink.add(encode(errorMsg('Room $roomCode not found')));
+        return;
+      }
+      final specId = room.addSpectator(sink);
+      setSpectatorId(specId);
+      setContext(room.code, '');
+      sink.add(encode(roomSpectatingMsg(room.code, specId)));
   }
 }
