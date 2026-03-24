@@ -81,10 +81,10 @@ jobs:
         id: golden-check
         if: always()
         run: |
-          if [ -d "apps/countdown_flutter/test/failures" ] && [ "$(ls -A apps/countdown_flutter/test/failures 2>/dev/null)" ]; then
+          if [ -d "apps/countdown_flutter/test/golden/screens/failures" ] && [ "$(ls -A apps/countdown_flutter/test/golden/screens/failures 2>/dev/null)" ]; then
             echo "golden_failures=true" >> $GITHUB_OUTPUT
             echo "Found golden test failures:"
-            ls -la apps/countdown_flutter/test/failures/
+            ls -la apps/countdown_flutter/test/golden/screens/failures/
           else
             echo "golden_failures=false" >> $GITHUB_OUTPUT
           fi
@@ -93,7 +93,7 @@ jobs:
         if: steps.golden-check.outputs.golden_failures == 'true' && github.event_name == 'pull_request'
         run: |
           mkdir -p golden-review-deploy
-          cp apps/countdown_flutter/test/failures/* golden-review-deploy/ 2>/dev/null || true
+          cp apps/countdown_flutter/test/golden/screens/failures/* golden-review-deploy/ 2>/dev/null || true
 
           # Copy template
           cp .github/golden-compare-template.html golden-review-deploy/index.html
