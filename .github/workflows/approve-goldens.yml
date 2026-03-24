@@ -76,7 +76,7 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          git add apps/countdown_flutter/test/golden/screens/goldens/ apps/countdown_flutter/test/failures/ 2>/dev/null || true
+          git add apps/countdown_flutter/test/golden/screens/goldens/ apps/countdown_flutter/test/golden/screens/failures/ 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
