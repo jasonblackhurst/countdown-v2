@@ -3,11 +3,13 @@ import 'package:countdown_core/countdown_core.dart';
 import 'package:flutter/material.dart';
 
 import '../client/game_client.dart';
+import '../services/sound_service.dart';
 import '../theme.dart';
 
 class GameScreen extends StatefulWidget {
   final GameClient client;
-  const GameScreen({super.key, required this.client});
+  final SoundService? soundService;
+  const GameScreen({super.key, required this.client, this.soundService});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -18,6 +20,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late final AnimationController _lifeLossController;
   late final AnimationController _livesPulseController;
   bool _showLifeLossFlash = false;
+  late final SoundService _soundService;
 
   @override
   void initState() {
@@ -41,6 +44,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       upperBound: 1.2,
       value: 1.0,
     );
+    _soundService = widget.soundService ?? SystemSoundService();
     // Start confetti if already in won phase
     if (widget.client.state.phase == GamePhase.won) {
       _confettiController.play();
@@ -49,14 +53,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _onStateChange() {
-    if (widget.client.state.phase == GamePhase.won) {
+    final phase = widget.client.state.phase;
+    final prevPhase = widget.client.previousPhase;
+
+    if (phase == GamePhase.won) {
       _confettiController.play();
+      if (prevPhase != GamePhase.won) {
+        _soundService.playWinSound();
+      }
+    }
+    if (phase == GamePhase.gameOver && prevPhase != GamePhase.gameOver) {
+      _soundService.playLossSound();
     }
     // Detect life loss
     final prevLives = widget.client.previousLives;
     final curLives = widget.client.state.lives;
     if (prevLives != null && curLives != null && curLives < prevLives) {
       _triggerLifeLossFlash();
+      _soundService.playLifeLossSound();
     }
   }
 
@@ -108,12 +122,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         scale: _livesPulseController,
                         child: _LivesIndicator(lives: state.lives ?? 5),
                       ),
-                      Text(
-                        '${discard.length}/100 played',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.5),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${discard.length}/100 played',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('mute-toggle'),
+                            icon: Icon(
+                              _soundService.isMuted
+                                  ? Icons.volume_off
+                                  : Icons.volume_up,
+                              size: 20,
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _soundService.toggleMute();
+                              });
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -156,7 +190,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             itemBuilder: (_, i) => _AnimatedCardTile(
                               value: hand[i],
                               onTap: state.phase == GamePhase.round
-                                  ? () => widget.client.playCard(hand[i])
+                                  ? () {
+                                      if (!_soundService.isMuted) {
+                                        _soundService.playCardSound();
+                                      }
+                                      widget.client.playCard(hand[i]);
+                                    }
                                   : null,
                             ),
                           ),
