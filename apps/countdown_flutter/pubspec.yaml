@@ -37,6 +37,7 @@ dependencies:
   countdown_core:
     path: ../../packages/countdown_core
   google_fonts: ^8.0.2
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

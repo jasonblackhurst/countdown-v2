@@ -9,7 +9,7 @@ typedef Sink = StreamSink<String>;
 
 class _ConnectedPlayer {
   final String playerId;
-  final Sink sink;
+  Sink sink;
   _ConnectedPlayer(this.playerId, this.sink);
 }
 
@@ -139,6 +139,23 @@ class Room {
       orElse: () => throw StateError('Player $playerId not connected'),
     );
     conn.sink.add(encode(msg));
+  }
+
+  /// Replaces the WebSocket connection for an existing player (reconnection).
+  /// Throws [StateError] if [playerId] is not found in this room.
+  void rejoinPlayer(String playerId, Sink sink) {
+    final conn = _connections.where((c) => c.playerId == playerId).firstOrNull;
+    if (conn == null) {
+      throw StateError('Player $playerId not found in room $code');
+    }
+    conn.sink = sink;
+
+    // If the game has started, broadcast per-player state; otherwise lobby.
+    if (_started) {
+      _broadcastState();
+    } else {
+      _broadcastLobbyState();
+    }
   }
 
   void removePlayer(String playerId) {

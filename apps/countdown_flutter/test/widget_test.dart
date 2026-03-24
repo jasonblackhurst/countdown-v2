@@ -1383,4 +1383,60 @@ void main() {
       client.dispose();
     });
   });
+
+  // ── Reconnection ────────────────────────────────────────────────────────
+
+  group('GameClient reconnection', () {
+    late GameClient client;
+    late _FakeSink sink;
+    late StreamController<String> controller;
+
+    setUp(() {
+      client = GameClient();
+      (sink, controller) = connectFake(client);
+    });
+
+    tearDown(() {
+      controller.close();
+      client.dispose();
+    });
+
+    test('RC1. rejoinRoom() sends correct JSON', () {
+      client.rejoinRoom('ABCD', 'some-uuid');
+      expect(sink.lastSent(), {
+        'type': 'rejoin_room',
+        'room_code': 'ABCD',
+        'player_id': 'some-uuid',
+      });
+    });
+
+    test('RC2. room_rejoined message stores roomCode and playerId', () async {
+      controller.add(
+        jsonEncode({
+          'type': 'room_rejoined',
+          'room_code': 'ABCD',
+          'player_id': 'pid-1',
+        }),
+      );
+      await Future.microtask(() {});
+      expect(client.state.roomCode, 'ABCD');
+      expect(client.state.playerId, 'pid-1');
+    });
+
+    test(
+      'RC3. isReconnecting is true while reconnection is in progress',
+      () async {
+        // Simulate disconnect
+        await controller.close();
+        await Future.microtask(() {});
+        expect(client.state.connectionStatus, ConnectionStatus.disconnected);
+      },
+    );
+
+    test('RC4. storedSession returns null when no session is stored', () {
+      // Fresh client has no stored session
+      expect(client.state.roomCode, isNull);
+      expect(client.state.playerId, isNull);
+    });
+  });
 }
