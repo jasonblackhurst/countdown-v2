@@ -106,6 +106,11 @@ class GameClient extends ChangeNotifier {
   ClientState _state = const ClientState();
   ClientState get state => _state;
 
+  /// The phase from the previous state update, used to detect transitions
+  /// (e.g. round -> lobby for the round transition interstitial).
+  GamePhase? _previousPhase;
+  GamePhase? get previousPhase => _previousPhase;
+
   StreamSubscription<String>? _sub;
   MessageSink? _sink;
 
@@ -215,6 +220,7 @@ class GameClient extends ChangeNotifier {
   }
 
   void _update(ClientState next) {
+    _previousPhase = _state.phase;
     _state = next;
     notifyListeners();
   }
