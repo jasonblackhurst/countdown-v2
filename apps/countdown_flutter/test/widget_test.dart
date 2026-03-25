@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:confetti/confetti.dart';
 import 'package:countdown_core/countdown_core.dart';
 import 'package:countdown_flutter/src/client/game_client.dart';
 import 'package:countdown_flutter/src/screens/game_screen.dart';
@@ -826,6 +827,322 @@ void main() {
       expect(client.state.roomCode, isNull);
       // Close controller before dispose to avoid hanging futures
       unawaited(ctrl.close());
+      client.dispose();
+    });
+  });
+
+  // ── Win/Loss Celebration Screens ────────────────────────────────────────────
+
+  group('Win celebration screen', () {
+    testWidgets(
+      '31. win screen shows full-screen overlay with "You Won!" title',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
+
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'won',
+              lives: 5,
+              roundNumber: 10,
+              discardPile: List.generate(100, (i) => 100 - i),
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        await tester.pumpWidget(wrap(GameScreen(client: client), client));
+        await tester.pump();
+
+        expect(find.text('You Won!'), findsOneWidget);
+        expect(find.text('100/100 cards played'), findsOneWidget);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
+
+    testWidgets('32. win screen has confetti widget', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'won',
+            lives: 5,
+            roundNumber: 10,
+            discardPile: List.generate(100, (i) => 100 - i),
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      // ConfettiWidget from confetti package should be present
+      expect(find.byType(ConfettiWidget), findsWidgets);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('33. win screen does NOT show old small banner', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'won',
+            lives: 5,
+            roundNumber: 10,
+            discardPile: List.generate(100, (i) => 100 - i),
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      // Old banner text should be gone
+      expect(find.text('You won! All 100 cards played.'), findsNothing);
+      await ctrl.close();
+      client.dispose();
+    });
+  });
+
+  group('Loss celebration screen', () {
+    testWidgets(
+      '34. loss screen shows full-screen overlay with "Game Over" title',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
+
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'gameOver',
+              lives: 0,
+              roundNumber: 3,
+              discardPile: List.generate(42, (i) => 100 - i),
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        await tester.pumpWidget(wrap(GameScreen(client: client), client));
+        await tester.pump();
+
+        expect(find.text('Game Over'), findsOneWidget);
+        expect(find.text('No lives left'), findsOneWidget);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
+
+    testWidgets(
+      '35. loss screen shows card progress (e.g., "42/100 cards played")',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
+
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'gameOver',
+              lives: 0,
+              roundNumber: 3,
+              discardPile: List.generate(42, (i) => 100 - i),
+              players: [
+                {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        await tester.pumpWidget(wrap(GameScreen(client: client), client));
+        await tester.pump();
+
+        expect(find.text('42/100 cards played'), findsOneWidget);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
+
+    testWidgets('36. loss screen does NOT show old small banner', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'gameOver',
+            lives: 0,
+            roundNumber: 3,
+            discardPile: List.generate(42, (i) => 100 - i),
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      // Old banner text should be gone
+      expect(find.text('Game over — no lives left.'), findsNothing);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('37. loss screen still has Play Again and Leave Room buttons', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'gameOver',
+            lives: 0,
+            roundNumber: 3,
+            discardPile: List.generate(42, (i) => 100 - i),
+            players: [
+              {'id': 'p1', 'name': 'Alice', 'hand_size': 0, 'hand': []},
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 0, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Play Again'), findsOneWidget);
+      expect(find.text('Leave Room'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+  });
+
+  group('Win/Loss screen does not appear during normal play', () {
+    testWidgets('38. no celebration overlay during active round', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            lives: 5,
+            roundNumber: 1,
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 2,
+                'hand': [75, 42],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('You Won!'), findsNothing);
+      expect(find.text('Game Over'), findsNothing);
+      await ctrl.close();
       client.dispose();
     });
   });
