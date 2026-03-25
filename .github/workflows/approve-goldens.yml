@@ -69,18 +69,53 @@ jobs:
         run: flutter pub get
         working-directory: apps/countdown_flutter
 
+      - name: List goldens before update
+        run: |
+          echo "=== pwd ==="
+          pwd
+          echo "=== goldens directory ==="
+          ls -la apps/countdown_flutter/test/golden/screens/goldens/ 2>&1 || echo "Directory not found"
+          echo "=== md5 checksums before ==="
+          md5sum apps/countdown_flutter/test/golden/screens/goldens/*.png 2>/dev/null || echo "No png files"
+
       - name: Update golden files
-        run: flutter test --update-goldens
+        run: |
+          echo "=== pwd ==="
+          pwd
+          flutter test --update-goldens
         working-directory: apps/countdown_flutter
+
+      - name: List goldens after update
+        run: |
+          echo "=== pwd ==="
+          pwd
+          echo "=== goldens directory ==="
+          ls -la apps/countdown_flutter/test/golden/screens/goldens/ 2>&1 || echo "Directory not found"
+          echo "=== md5 checksums after ==="
+          md5sum apps/countdown_flutter/test/golden/screens/goldens/*.png 2>/dev/null || echo "No png files"
+          echo "=== failures directory ==="
+          ls -la apps/countdown_flutter/test/golden/screens/failures/ 2>&1 || echo "No failures directory"
+          echo "=== git status ==="
+          git status
+          echo "=== git diff --stat (unstaged) ==="
+          git diff --stat
 
       - name: Check for changes
         id: changes
         run: |
-          git add apps/countdown_flutter/test/golden/screens/goldens/ apps/countdown_flutter/test/golden/screens/failures/ 2>/dev/null || true
+          echo "=== pwd ==="
+          pwd
+          echo "=== staging files ==="
+          git add apps/countdown_flutter/test/golden/screens/goldens/ apps/countdown_flutter/test/golden/screens/failures/ 2>&1 || echo "git add failed with: $?"
+          echo "=== git diff --staged --stat ==="
+          git diff --staged --stat
+          echo "=== git diff --staged --quiet exit code ==="
           if git diff --staged --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No staged changes detected"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Staged changes detected"
           fi
 
       - name: Commit updated goldens
