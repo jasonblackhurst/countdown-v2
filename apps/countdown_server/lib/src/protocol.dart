@@ -19,6 +19,10 @@ sealed class ClientMessage {
       'vote_card_count' => VoteCardCountMsg(map['count'] as int),
       'play_card' => PlayCardMsg(GameCard(map['value'] as int)),
       'play_again' => const PlayAgainMsg(),
+      'rejoin_room' => RejoinRoomMsg(
+        roomCode: map['room_code'] as String,
+        playerId: map['player_id'] as String,
+      ),
       _ => throw FormatException('Unknown message type: ${map['type']}'),
     };
   }
@@ -52,6 +56,12 @@ class PlayAgainMsg extends ClientMessage {
   const PlayAgainMsg();
 }
 
+class RejoinRoomMsg extends ClientMessage {
+  final String roomCode;
+  final String playerId;
+  const RejoinRoomMsg({required this.roomCode, required this.playerId});
+}
+
 // ── Outgoing message builders ─────────────────────────────────────────────
 
 Map<String, dynamic> roomCreatedMsg(String roomCode, String playerId) => {
@@ -62,6 +72,12 @@ Map<String, dynamic> roomCreatedMsg(String roomCode, String playerId) => {
 
 Map<String, dynamic> roomJoinedMsg(String roomCode, String playerId) => {
   'type': 'room_joined',
+  'room_code': roomCode,
+  'player_id': playerId,
+};
+
+Map<String, dynamic> roomRejoinedMsg(String roomCode, String playerId) => {
+  'type': 'room_rejoined',
   'room_code': roomCode,
   'player_id': playerId,
 };

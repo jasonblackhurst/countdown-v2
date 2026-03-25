@@ -129,5 +129,19 @@ void _handle(
         return;
       }
       room.resetForPlayAgain();
+
+    case RejoinRoomMsg(:final roomCode, :final playerId):
+      final room = rooms.getRoom(roomCode);
+      if (room == null) {
+        sink.add(encode(errorMsg('Room $roomCode not found')));
+        return;
+      }
+      try {
+        room.rejoinPlayer(playerId, sink);
+        setContext(room.code, playerId);
+        sink.add(encode(roomRejoinedMsg(room.code, playerId)));
+      } on StateError catch (e) {
+        sink.add(encode(errorMsg(e.message)));
+      }
   }
 }

@@ -169,6 +169,12 @@ class GameClient extends ChangeNotifier {
 
   void playAgain() => _send({'type': 'play_again'});
 
+  void rejoinRoom(String roomCode, String playerId) => _send({
+    'type': 'rejoin_room',
+    'room_code': roomCode,
+    'player_id': playerId,
+  });
+
   void _send(Map<String, dynamic> msg) {
     _sink?.send(jsonEncode(msg));
   }
@@ -186,6 +192,13 @@ class GameClient extends ChangeNotifier {
           ),
         );
       case 'room_joined':
+        _update(
+          _state.copyWith(
+            roomCode: msg['room_code'] as String,
+            playerId: msg['player_id'] as String,
+          ),
+        );
+      case 'room_rejoined':
         _update(
           _state.copyWith(
             roomCode: msg['room_code'] as String,

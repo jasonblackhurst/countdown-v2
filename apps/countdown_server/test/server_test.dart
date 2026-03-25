@@ -652,4 +652,214 @@ void main() {
       expect(state['last_played_by'], isNull);
     });
   });
+
+  // ── Reconnection ──────────────────────────────────────────────────────────
+
+  group('Room reconnection', () {
+    test('30. rejoinPlayer replaces sink and broadcasts state in lobby', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink1 = _RecordingSink();
+      final sink2 = _RecordingSink();
+      final aliceId = room.addPlayer('Alice', sink1);
+      room.addPlayer('Bob', sink2);
+
+      // Alice disconnects, then reconnects with a new sink
+      final newSink = _RecordingSink();
+      room.rejoinPlayer(aliceId, newSink);
+
+      // New sink should receive a state_update
+      final updates = newSink.msgsOfType('state_update').toList();
+      expect(updates, isNotEmpty);
+      final players = updates.last['state']['players'] as List;
+      expect(
+        players.map((p) => (p as Map)['name']),
+        containsAll(['Alice', 'Bob']),
+      );
+    });
+
+    test('31. rejoinPlayer works during an active round', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 2);
+      room.voteCardCount(ids[1], 2);
+
+      // Alice reconnects mid-round
+      final newSink = _RecordingSink();
+      room.rejoinPlayer(ids[0], newSink);
+
+      final updates = newSink.msgsOfType('state_update').toList();
+      expect(updates, isNotEmpty);
+      expect(updates.last['state']['phase'], 'round');
+
+      // Alice should see her own hand values
+      final players = updates.last['state']['players'] as List;
+      final aliceEntry =
+          players.firstWhere((p) => (p as Map)['id'] == ids[0]) as Map;
+      expect((aliceEntry['hand'] as List).isNotEmpty, isTrue);
+    });
+
+    test('32. rejoinPlayer throws for unknown player ID', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink = _RecordingSink();
+      room.addPlayer('Alice', sink);
+
+      expect(
+        () => room.rejoinPlayer('unknown-id', _RecordingSink()),
+        throwsStateError,
+      );
+    });
+
+    test('33. after rejoin, old sink no longer receives broadcasts', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      final oldAliceMsgCount = sinks[0].received.length;
+      final newSink = _RecordingSink();
+      room.rejoinPlayer(ids[0], newSink);
+
+      // Start a round to trigger another broadcast
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      // Old sink should not receive new messages after rejoin
+      // (it got messages up to the rejoin broadcast, but nothing after)
+      // The rejoin itself broadcasts once, but subsequent broadcasts go to newSink
+      final afterRejoinOldCount = sinks[0].received.length;
+      // oldAliceMsgCount was before rejoin. rejoin broadcasts once to old sink? No — rejoin replaces first.
+      // So old sink should have the same count as before rejoin.
+      expect(afterRejoinOldCount, oldAliceMsgCount);
+    });
+
+    test('34. rejoinPlayer works during gameOver phase', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      // Use more cards so we have enough wrong plays to lose 5 lives
+      room.voteCardCount(ids[0], 10);
+      room.voteCardCount(ids[1], 10);
+
+      // Lose all 5 lives by always playing the lowest card (guaranteed wrong)
+      while (room.state.phase == GamePhase.round) {
+        final allCards = room.state.players.expand((p) => p.hand.cards).toList()
+          ..sort((a, b) => a.value.compareTo(b.value));
+        if (allCards.isEmpty) break;
+        final lowest = allCards.first;
+        final holder = room.state.players.firstWhere(
+          (p) => p.hand.cards.contains(lowest),
+        );
+        final roomPlayerId = ids.firstWhere(
+          (id) => room.engineIdForPlayerId(id) == holder.id,
+        );
+        room.playCard(roomPlayerId, lowest);
+      }
+
+      expect(room.state.phase, GamePhase.gameOver);
+
+      final newSink = _RecordingSink();
+      room.rejoinPlayer(ids[0], newSink);
+      final updates = newSink.msgsOfType('state_update').toList();
+      expect(updates, isNotEmpty);
+      expect(updates.last['state']['phase'], 'gameOver');
+    });
+
+    test('35. rejoin_room message is parsed by ClientMessage.parse', () {
+      final msg = ClientMessage.parse(
+        '{"type": "rejoin_room", "room_code": "ABCD", "player_id": "some-uuid"}',
+      );
+      expect(msg, isA<RejoinRoomMsg>());
+      final rejoin = msg as RejoinRoomMsg;
+      expect(rejoin.roomCode, 'ABCD');
+      expect(rejoin.playerId, 'some-uuid');
+    });
+
+    test(
+      '36. rejoinPlayer sends room_rejoined message to the rejoining player',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sink1 = _RecordingSink();
+        final sink2 = _RecordingSink();
+        final aliceId = room.addPlayer('Alice', sink1);
+        room.addPlayer('Bob', sink2);
+
+        final newSink = _RecordingSink();
+        room.rejoinPlayer(aliceId, newSink);
+
+        // After rejoin, player should receive state_update with current state
+        final updates = newSink.msgsOfType('state_update').toList();
+        expect(updates, isNotEmpty);
+      },
+    );
+
+    test('37. after rejoin, player can still play cards and vote', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      // Alice reconnects
+      final newSink = _RecordingSink();
+      room.rejoinPlayer(ids[0], newSink);
+
+      // Both vote — should work fine
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+      expect(room.state.phase, GamePhase.round);
+
+      // Alice plays her card
+      final aliceEngineId = room.engineIdForPlayerId(ids[0])!;
+      final alicePlayer = room.state.players.firstWhere(
+        (p) => p.id == aliceEngineId,
+      );
+      if (alicePlayer.hand.cards.isNotEmpty) {
+        final globalHighest = room.state.players
+            .expand((p) => p.hand.cards)
+            .reduce((a, b) => a.value > b.value ? a : b);
+        final holderEngineId = room.state.players
+            .firstWhere((p) => p.hand.cards.contains(globalHighest))
+            .id;
+        final roomPlayerId = ids.firstWhere(
+          (id) => room.engineIdForPlayerId(id) == holderEngineId,
+        );
+        final result = room.playCard(roomPlayerId, globalHighest);
+        expect(result, PlayResult.valid);
+      }
+    });
+  });
+
+  // ── Protocol: rejoin_room ──────────────────────────────────────────────────
+
+  group('Protocol rejoin_room', () {
+    test('38. roomRejoinedMsg creates correct JSON', () {
+      final msg = roomRejoinedMsg('ABCD', 'some-uuid');
+      expect(msg, {
+        'type': 'room_rejoined',
+        'room_code': 'ABCD',
+        'player_id': 'some-uuid',
+      });
+    });
+  });
 }

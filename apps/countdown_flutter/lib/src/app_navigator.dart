@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:countdown_core/countdown_core.dart';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'client/game_client.dart';
+import 'client/session_store.dart';
 import 'screens/game_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/lobby_screen.dart';
@@ -41,6 +44,9 @@ class _CountdownAppState extends State<CountdownApp> {
   int _transitionRoundNumber = 0;
   int _transitionCardsPlayed = 0;
   int _transitionLives = 5;
+  bool _isReconnecting = false;
+  int _reconnectAttempts = 0;
+  static const _maxReconnectAttempts = 3;
 
   @override
   void initState() {
@@ -63,6 +69,27 @@ class _CountdownAppState extends State<CountdownApp> {
     final state = _client.state;
     final prev = _client.previousPhase;
 
+    // Save session whenever we have room/player info
+    if (state.roomCode != null && state.playerId != null) {
+      SessionStore.save(state.roomCode!, state.playerId!);
+      // Reset reconnect attempts on successful connection with room info
+      _reconnectAttempts = 0;
+      if (_isReconnecting) {
+        setState(() => _isReconnecting = false);
+      }
+    }
+
+    // Handle unexpected disconnect — attempt reconnection
+    if (state.connectionStatus == ConnectionStatus.disconnected &&
+        !_isReconnecting) {
+      _attemptReconnect();
+    }
+
+    // Handle rejoin error — clear session and stop reconnecting
+    if (state.lastError != null && _isReconnecting) {
+      _clearSessionAndStopReconnecting();
+    }
+
     // Detect round -> lobby transition with roundNumber > 0
     if (prev == GamePhase.round &&
         state.phase == GamePhase.lobby &&
@@ -74,6 +101,40 @@ class _CountdownAppState extends State<CountdownApp> {
         _transitionCardsPlayed = state.discardPile?.length ?? 0;
         _transitionLives = state.lives ?? 5;
       });
+    }
+  }
+
+  Future<void> _attemptReconnect() async {
+    final session = await SessionStore.load();
+    if (session == null) return;
+
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      await _clearSessionAndStopReconnecting();
+      return;
+    }
+
+    setState(() => _isReconnecting = true);
+    _reconnectAttempts++;
+
+    // Small delay before reconnecting
+    await Future<void>.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+
+    try {
+      _connectWs();
+      // Send rejoin after connection is established
+      _client.rejoinRoom(session.roomCode, session.playerId);
+    } catch (_) {
+      if (_reconnectAttempts >= _maxReconnectAttempts) {
+        await _clearSessionAndStopReconnecting();
+      }
+    }
+  }
+
+  Future<void> _clearSessionAndStopReconnecting() async {
+    await SessionStore.clear();
+    if (mounted) {
+      setState(() => _isReconnecting = false);
     }
   }
 
@@ -101,6 +162,22 @@ class _CountdownAppState extends State<CountdownApp> {
               ).showSnackBar(SnackBar(content: Text(state.lastError!)));
             }
           });
+        }
+
+        // Show reconnecting indicator
+        if (_isReconnecting) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Reconnecting...', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+            ),
+          );
         }
 
         if (widget.pileViewerMode && state.roomCode != null) {
