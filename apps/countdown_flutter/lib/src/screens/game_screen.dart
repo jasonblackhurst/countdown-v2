@@ -3,6 +3,7 @@ import 'package:countdown_core/countdown_core.dart';
 import 'package:flutter/material.dart';
 
 import '../client/game_client.dart';
+import '../theme.dart';
 
 class GameScreen extends StatefulWidget {
   final GameClient client;
@@ -69,9 +70,9 @@ class _GameScreenState extends State<GameScreen> {
                       _LivesIndicator(lives: state.lives ?? 5),
                       Text(
                         '${discard.length}/100 played',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey,
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
@@ -82,9 +83,12 @@ class _GameScreenState extends State<GameScreen> {
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Your hand',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   // ── Hand ───────────────────────────────────────────────
@@ -116,9 +120,9 @@ class _GameScreenState extends State<GameScreen> {
                       child: Text(
                         'Final round! Some players have extra cards.',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.orange.shade700,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.amber),
                       ),
                     ),
                 ],
@@ -355,16 +359,32 @@ class _LastPlayedCard extends StatelessWidget {
       height: 120,
       width: 80,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: kCardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade400),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       alignment: Alignment.center,
       child: value == null
-          ? const Text('—', style: TextStyle(fontSize: 32, color: Colors.grey))
+          ? Text(
+              '—',
+              style: TextStyle(
+                fontSize: 32,
+                color: kCardTextColor.withValues(alpha: 0.4),
+              ),
+            )
           : Text(
               '$value',
-              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.bold,
+                color: kCardTextColor,
+              ),
             ),
     );
   }
@@ -394,7 +414,9 @@ class _CardTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: onTap != null ? Colors.black87 : Colors.grey,
+                color: onTap != null
+                    ? kCardTextColor
+                    : kCardTextColor.withValues(alpha: 0.5),
               ),
             ),
           ),

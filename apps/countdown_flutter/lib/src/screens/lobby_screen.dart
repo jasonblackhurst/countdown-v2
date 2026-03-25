@@ -2,6 +2,7 @@ import 'package:countdown_core/countdown_core.dart';
 import 'package:flutter/material.dart';
 
 import '../client/game_client.dart';
+import '../theme.dart';
 
 class LobbyScreen extends StatefulWidget {
   final GameClient client;
@@ -37,14 +38,28 @@ class _LobbyScreenState extends State<LobbyScreen> {
             Text(
               state.roomCode ?? '',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 56,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 12,
-              ),
+              style:
+                  Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
+                    fontSize: 56,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 12,
+                    color: kAccentColor,
+                  ) ??
+                  TextStyle(
+                    fontSize: 56,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 12,
+                    color: kAccentColor,
+                  ),
             ),
             const SizedBox(height: 32),
-            const Text('Players', style: TextStyle(fontSize: 18)),
+            Text(
+              'Players',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
             const SizedBox(height: 8),
             Expanded(
               child: ListView.separated(
@@ -68,7 +83,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.orange.shade700),
+                ).textTheme.bodySmall?.copyWith(color: Colors.amber),
               ),
               const SizedBox(height: 8),
             ],

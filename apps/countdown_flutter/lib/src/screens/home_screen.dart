@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../client/game_client.dart';
+import '../theme.dart';
 
 class HomeScreen extends StatefulWidget {
   final GameClient client;
@@ -63,14 +64,26 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               'Countdown',
-              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              style:
+                  Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                  ) ??
+                  const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               '100 → 1  ·  play in silence',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 16,
+                color: kAccentColor.withValues(alpha: 0.7),
+              ),
             ),
             const SizedBox(height: 48),
             FilledButton(
