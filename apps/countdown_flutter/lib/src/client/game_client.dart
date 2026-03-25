@@ -175,6 +175,9 @@ class GameClient extends ChangeNotifier {
     'player_id': playerId,
   });
 
+  void spectateRoom(String roomCode) =>
+      _send({'type': 'spectate_room', 'room_code': roomCode});
+
   void _send(Map<String, dynamic> msg) {
     _sink?.send(jsonEncode(msg));
   }
@@ -205,6 +208,8 @@ class GameClient extends ChangeNotifier {
             playerId: msg['player_id'] as String,
           ),
         );
+      case 'room_spectating':
+        _update(_state.copyWith(roomCode: msg['room_code'] as String));
       case 'state_update':
         _applyStateUpdate(msg['state'] as Map<String, dynamic>);
       case 'error':

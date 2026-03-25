@@ -1439,4 +1439,93 @@ void main() {
       expect(client.state.playerId, isNull);
     });
   });
+
+  // ── Spectator / Pile viewer ────────────────────────────────────────────
+
+  group('GameClient spectator', () {
+    late GameClient client;
+    late _FakeSink sink;
+    late StreamController<String> controller;
+
+    setUp(() {
+      client = GameClient();
+      (sink, controller) = connectFake(client);
+    });
+
+    tearDown(() {
+      controller.close();
+      client.dispose();
+    });
+
+    test('SP1. spectateRoom() sends correct JSON', () {
+      client.spectateRoom('ABCD');
+      expect(sink.lastSent(), {'type': 'spectate_room', 'room_code': 'ABCD'});
+    });
+
+    test('SP2. room_spectating message stores roomCode', () async {
+      controller.add(
+        jsonEncode({
+          'type': 'room_spectating',
+          'room_code': 'ABCD',
+          'spectator_id': 'spec-1',
+        }),
+      );
+      await Future.microtask(() {});
+      expect(client.state.roomCode, 'ABCD');
+    });
+
+    test(
+      'SP3. state_update messages are processed normally in spectator mode',
+      () async {
+        controller.add(
+          jsonEncode({
+            'type': 'room_spectating',
+            'room_code': 'ABCD',
+            'spectator_id': 'spec-1',
+          }),
+        );
+        await Future.microtask(() {});
+
+        controller.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              lives: 4,
+              roundNumber: 2,
+              discardPile: [100, 99],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        expect(client.state.phase, GamePhase.round);
+        expect(client.state.lives, 4);
+        expect(client.state.discardPile, [100, 99]);
+      },
+    );
+  });
+
+  group('HomeScreen table display', () {
+    testWidgets('SP4. shows Table Display button on home screen', (
+      tester,
+    ) async {
+      final client = GameClient();
+      await tester.pumpWidget(wrap(HomeScreen(client: client), client));
+      expect(find.text('Table Display'), findsOneWidget);
+      client.dispose();
+    });
+
+    testWidgets(
+      'SP5. tapping Table Display shows a dialog to enter room code',
+      (tester) async {
+        final client = GameClient();
+        await tester.pumpWidget(wrap(HomeScreen(client: client), client));
+        await tester.tap(find.text('Table Display'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Room code'), findsOneWidget);
+        client.dispose();
+      },
+    );
+  });
 }

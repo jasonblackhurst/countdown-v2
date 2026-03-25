@@ -862,4 +862,165 @@ void main() {
       });
     });
   });
+
+  // ── Spectator support ──────────────────────────────────────────────────
+
+  group('Room spectator', () {
+    test(
+      '39. addSpectator adds a spectator that receives lobby broadcasts',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final playerSink = _RecordingSink();
+        room.addPlayer('Alice', playerSink);
+
+        final spectatorSink = _RecordingSink();
+        room.addSpectator(spectatorSink);
+
+        // Spectator should have received a lobby state_update
+        final updates = spectatorSink.msgsOfType('state_update').toList();
+        expect(updates, isNotEmpty);
+        final players = updates.last['state']['players'] as List;
+        expect(players, hasLength(1)); // only Alice, spectator is not in list
+      },
+    );
+
+    test(
+      '40. spectators receive state_update broadcasts but are not in player list',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+
+        final spectatorSink = _RecordingSink();
+        room.addSpectator(spectatorSink);
+
+        room.startGame(ids.first);
+        room.voteCardCount(ids[0], 1);
+        room.voteCardCount(ids[1], 1);
+
+        // Spectator should have received state updates
+        final updates = spectatorSink.msgsOfType('state_update').toList();
+        expect(updates.length, greaterThanOrEqualTo(2));
+
+        // Spectator's view should never include a spectator player entry
+        final lastState = updates.last['state'] as Map<String, dynamic>;
+        final players = lastState['players'] as List;
+        expect(players, hasLength(2)); // Alice and Bob only
+      },
+    );
+
+    test('41. spectators do not count toward voting quorum', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+
+      final spectatorSink = _RecordingSink();
+      room.addSpectator(spectatorSink);
+
+      room.startGame(ids.first);
+
+      // Only 2 players need to vote, not 3
+      room.voteCardCount(ids[0], 2);
+      expect(room.state.phase, GamePhase.lobby); // not yet
+      room.voteCardCount(ids[1], 2);
+      expect(room.state.phase, GamePhase.round); // round started with 2 votes
+    });
+
+    test('42. spectators see all card hands as empty (no card leaking)', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+
+      final spectatorSink = _RecordingSink();
+      room.addSpectator(spectatorSink);
+
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 2);
+      room.voteCardCount(ids[1], 2);
+
+      final lastUpdate = spectatorSink.msgsOfType('state_update').last;
+      final players = lastUpdate['state']['players'] as List;
+      for (final p in players) {
+        final hand = (p as Map)['hand'] as List;
+        expect(hand, isEmpty, reason: 'Spectator should not see any hands');
+      }
+    });
+
+    test(
+      '43. removeSpectator stops spectator from receiving further broadcasts',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+
+        final spectatorSink = _RecordingSink();
+        final spectatorId = room.addSpectator(spectatorSink);
+
+        room.startGame(ids.first);
+        final countAfterStart = spectatorSink.received.length;
+
+        room.removeSpectator(spectatorId);
+
+        room.voteCardCount(ids[0], 1);
+        room.voteCardCount(ids[1], 1);
+
+        // Spectator should not have received any new messages
+        expect(spectatorSink.received.length, countAfterStart);
+      },
+    );
+
+    test('44. spectate_room message is parsed by ClientMessage.parse', () {
+      final msg = ClientMessage.parse(
+        '{"type": "spectate_room", "room_code": "ABCD"}',
+      );
+      expect(msg, isA<SpectateRoomMsg>());
+      final spectate = msg as SpectateRoomMsg;
+      expect(spectate.roomCode, 'ABCD');
+    });
+
+    test('45. roomSpectatingMsg creates correct JSON', () {
+      final msg = roomSpectatingMsg('ABCD', 'spec-123');
+      expect(msg, {
+        'type': 'room_spectating',
+        'room_code': 'ABCD',
+        'spectator_id': 'spec-123',
+      });
+    });
+
+    test('46. spectators can join after game has started', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+
+      // Spectator joins mid-game — should not throw
+      final spectatorSink = _RecordingSink();
+      room.addSpectator(spectatorSink);
+
+      final updates = spectatorSink.msgsOfType('state_update').toList();
+      expect(updates, isNotEmpty);
+      expect(updates.last['state']['phase'], 'lobby');
+    });
+  });
 }

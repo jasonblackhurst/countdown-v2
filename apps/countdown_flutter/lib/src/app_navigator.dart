@@ -47,10 +47,12 @@ class _CountdownAppState extends State<CountdownApp> {
   bool _isReconnecting = false;
   int _reconnectAttempts = 0;
   static const _maxReconnectAttempts = 3;
+  late bool _pileViewerMode;
 
   @override
   void initState() {
     super.initState();
+    _pileViewerMode = widget.pileViewerMode;
     _client = GameClient();
     _client.addListener(_onClientUpdate);
     _connectWs();
@@ -180,12 +182,15 @@ class _CountdownAppState extends State<CountdownApp> {
           );
         }
 
-        if (widget.pileViewerMode && state.roomCode != null) {
+        if (_pileViewerMode && state.roomCode != null) {
           return PileScreen(client: _client);
         }
 
         if (state.roomCode == null) {
-          return HomeScreen(client: _client);
+          return HomeScreen(
+            client: _client,
+            onSpectate: () => setState(() => _pileViewerMode = true),
+          );
         }
 
         if (_showRoundTransition) {
