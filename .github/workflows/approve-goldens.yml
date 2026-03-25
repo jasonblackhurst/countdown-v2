@@ -106,7 +106,8 @@ jobs:
           echo "=== pwd ==="
           pwd
           echo "=== staging files ==="
-          git add apps/countdown_flutter/test/golden/screens/goldens/ apps/countdown_flutter/test/golden/screens/failures/ 2>&1 || echo "git add failed with: $?"
+          git add apps/countdown_flutter/test/golden/screens/goldens/ 2>/dev/null || true
+          git add apps/countdown_flutter/test/golden/screens/failures/ 2>/dev/null || true
           echo "=== git diff --staged --stat ==="
           git diff --staged --stat
           echo "=== git diff --staged --quiet exit code ==="
