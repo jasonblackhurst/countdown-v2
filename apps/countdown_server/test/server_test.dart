@@ -518,4 +518,138 @@ void main() {
       expect(msg, isA<PlayAgainMsg>());
     });
   });
+
+  // ── Player activity indicators ──────────────────────────────────────────
+
+  group('Player activity indicators', () {
+    test('25. state_update includes last_played_by after a card is played', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      // Find who holds the globally highest card and play it
+      final highest = room.state.players
+          .expand((p) => p.hand.cards)
+          .reduce((a, b) => a.value > b.value ? a : b);
+      final holderId = room.state.players
+          .firstWhere((p) => p.hand.cards.contains(highest))
+          .id;
+      final roomPlayerId = ids.firstWhere(
+        (id) => room.engineIdForPlayerId(id) == holderId,
+      );
+
+      room.playCard(roomPlayerId, highest);
+
+      // Both sinks should receive a state_update with last_played_by
+      for (final sink in sinks) {
+        final lastUpdate = sink.msgsOfType('state_update').last;
+        final state = lastUpdate['state'] as Map<String, dynamic>;
+        expect(state.containsKey('last_played_by'), isTrue);
+        final lastPlayedBy = state['last_played_by'] as Map<String, dynamic>;
+        expect(lastPlayedBy['player_id'], roomPlayerId);
+        expect(lastPlayedBy['card_value'], highest.value);
+      }
+    });
+
+    test('26. last_played_by includes the player name', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      final highest = room.state.players
+          .expand((p) => p.hand.cards)
+          .reduce((a, b) => a.value > b.value ? a : b);
+      final holderId = room.state.players
+          .firstWhere((p) => p.hand.cards.contains(highest))
+          .id;
+      final roomPlayerId = ids.firstWhere(
+        (id) => room.engineIdForPlayerId(id) == holderId,
+      );
+      final holderName = room.state.players
+          .firstWhere((p) => p.id == holderId)
+          .name;
+
+      room.playCard(roomPlayerId, highest);
+
+      final lastUpdate = sinks[0].msgsOfType('state_update').last;
+      final lastPlayedBy =
+          lastUpdate['state']['last_played_by'] as Map<String, dynamic>;
+      expect(lastPlayedBy['name'], holderName);
+    });
+
+    test(
+      '27. last_played_by is null in lobby state_update (before any card played)',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+        room.startGame(ids.first);
+
+        final lastUpdate = sinks[0].msgsOfType('state_update').last;
+        final state = lastUpdate['state'] as Map<String, dynamic>;
+        expect(state['last_played_by'], isNull);
+      },
+    );
+
+    test('28. last_played_by is null in pre-game lobby broadcasts', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink = _RecordingSink();
+      room.addPlayer('Alice', sink);
+
+      final lastUpdate = sink.msgsOfType('state_update').last;
+      final state = lastUpdate['state'] as Map<String, dynamic>;
+      expect(state['last_played_by'], isNull);
+    });
+
+    test('29. resetForPlayAgain clears last_played_by', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sinks = [_RecordingSink(), _RecordingSink()];
+      final ids = [
+        room.addPlayer('Alice', sinks[0]),
+        room.addPlayer('Bob', sinks[1]),
+      ];
+      room.startGame(ids.first);
+      room.voteCardCount(ids[0], 1);
+      room.voteCardCount(ids[1], 1);
+
+      // Play a card
+      final highest = room.state.players
+          .expand((p) => p.hand.cards)
+          .reduce((a, b) => a.value > b.value ? a : b);
+      final holderId = room.state.players
+          .firstWhere((p) => p.hand.cards.contains(highest))
+          .id;
+      final roomPlayerId = ids.firstWhere(
+        (id) => room.engineIdForPlayerId(id) == holderId,
+      );
+      room.playCard(roomPlayerId, highest);
+
+      // Reset
+      room.resetForPlayAgain();
+
+      final lastUpdate = sinks[0].msgsOfType('state_update').last;
+      final state = lastUpdate['state'] as Map<String, dynamic>;
+      expect(state['last_played_by'], isNull);
+    });
+  });
 }

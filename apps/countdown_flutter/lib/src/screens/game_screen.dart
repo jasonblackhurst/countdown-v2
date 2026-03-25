@@ -151,7 +151,33 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  // ── Player bar ──────────────────────────────────────
+                  _PlayerBar(
+                    key: const Key('player-bar'),
+                    players: state.players ?? [],
+                    localPlayerId: state.playerId,
+                    lastPlayedByName: state.lastPlayedByName,
+                  ),
+                  const SizedBox(height: 8),
+                  // ── Recent play indicator ───────────────────────────
+                  if (state.lastPlayedByName != null &&
+                      state.lastPlayedCardValue != null)
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Text(
+                        '${state.lastPlayedByName} played ${state.lastPlayedCardValue}',
+                        key: ValueKey<String>(
+                          '${state.lastPlayedByName}-${state.lastPlayedCardValue}',
+                        ),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: kAccentColor.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
                   // ── Last played card ───────────────────────────────────
                   AnimatedSwitcher(
                     key: const Key('last-played-animated'),
@@ -523,6 +549,82 @@ class _CardTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Compact player bar showing each player's name and card count.
+class _PlayerBar extends StatelessWidget {
+  final List<PlayerSnapshot> players;
+  final String? localPlayerId;
+  final String? lastPlayedByName;
+
+  const _PlayerBar({
+    super.key,
+    required this.players,
+    this.localPlayerId,
+    this.lastPlayedByName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      alignment: WrapAlignment.center,
+      children: players.map((p) {
+        final isLocal = p.id == localPlayerId;
+        final justPlayed = p.name == lastPlayedByName;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: justPlayed
+                ? kAccentColor.withValues(alpha: 0.25)
+                : kSurfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isLocal
+                  ? kAccentColor
+                  : Colors.white.withValues(alpha: 0.15),
+              width: isLocal ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                p.name,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isLocal ? FontWeight.bold : FontWeight.normal,
+                  color: isLocal ? kAccentColor : Colors.white70,
+                ),
+              ),
+              if (isLocal)
+                Text(
+                  ' (you)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: kAccentColor.withValues(alpha: 0.7),
+                  ),
+                ),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${p.handSize}',
+                  style: const TextStyle(fontSize: 11, color: Colors.white54),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

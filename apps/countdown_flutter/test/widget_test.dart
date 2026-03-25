@@ -46,6 +46,7 @@ Map<String, dynamic> _stateUpdate({
   bool gameInitialized = false,
   bool isFinalRound = false,
   int cardsRemaining = 100,
+  Map<String, dynamic>? lastPlayedBy,
 }) => {
   'type': 'state_update',
   'state': {
@@ -56,6 +57,7 @@ Map<String, dynamic> _stateUpdate({
     'game_initialized': gameInitialized,
     'is_final_round': isFinalRound,
     'cards_remaining': cardsRemaining,
+    'last_played_by': lastPlayedBy,
     'players':
         players ??
         [
@@ -1098,6 +1100,241 @@ void main() {
 
       expect(find.text('Play Again'), findsOneWidget);
       expect(find.text('Leave Room'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+  });
+
+  // ── Player activity indicators ────────────────────────────────────────
+
+  group('GameClient player activity', () {
+    late GameClient client;
+    late StreamController<String> controller;
+
+    setUp(() {
+      client = GameClient();
+      (_, controller) = connectFake(client);
+    });
+
+    tearDown(() {
+      controller.close();
+      client.dispose();
+    });
+
+    test(
+      'PA1. state_update with last_played_by stores lastPlayedByName',
+      () async {
+        controller.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        await Future.microtask(() {});
+        controller.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              lives: 5,
+              roundNumber: 1,
+              lastPlayedBy: {
+                'player_id': 'p2',
+                'name': 'Bob',
+                'card_value': 87,
+              },
+              players: [
+                {
+                  'id': 'p1',
+                  'name': 'Alice',
+                  'hand_size': 2,
+                  'hand': [75, 42],
+                },
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 1, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+        expect(client.state.lastPlayedByName, 'Bob');
+        expect(client.state.lastPlayedCardValue, 87);
+      },
+    );
+
+    test(
+      'PA2. state_update with null last_played_by clears lastPlayedByName',
+      () async {
+        controller.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        await Future.microtask(() {});
+        // First update with a play
+        controller.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              lives: 5,
+              roundNumber: 1,
+              lastPlayedBy: {
+                'player_id': 'p2',
+                'name': 'Bob',
+                'card_value': 87,
+              },
+              players: [
+                {
+                  'id': 'p1',
+                  'name': 'Alice',
+                  'hand_size': 2,
+                  'hand': [75, 42],
+                },
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 1, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+        expect(client.state.lastPlayedByName, 'Bob');
+
+        // Update without play
+        controller.add(
+          jsonEncode(_stateUpdate(phase: 'lobby', lives: 5, roundNumber: 1)),
+        );
+        await Future.microtask(() {});
+        expect(client.state.lastPlayedByName, isNull);
+        expect(client.state.lastPlayedCardValue, isNull);
+      },
+    );
+  });
+
+  group('GameScreen player activity display', () {
+    testWidgets(
+      'PA3. shows player list bar with names and card counts during round',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
+
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              lives: 5,
+              roundNumber: 1,
+              players: [
+                {
+                  'id': 'p1',
+                  'name': 'Alice',
+                  'hand_size': 3,
+                  'hand': [90, 75, 42],
+                },
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
+
+        await tester.pumpWidget(wrap(GameScreen(client: client), client));
+        await tester.pump();
+
+        // Should show player names with card counts
+        expect(find.text('Alice'), findsOneWidget);
+        expect(find.text('Bob'), findsOneWidget);
+        await ctrl.close();
+        client.dispose();
+      },
+    );
+
+    testWidgets('PA4. shows "Bob played 87" when last_played_by is set', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            lives: 5,
+            roundNumber: 1,
+            lastPlayedBy: {'player_id': 'p2', 'name': 'Bob', 'card_value': 87},
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 2,
+                'hand': [75, 42],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 1, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Bob played 87'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('PA5. local player is visually distinct in player bar', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            lives: 5,
+            roundNumber: 1,
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 3,
+                'hand': [90, 75, 42],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 2, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      // Local player should have a "(you)" indicator
+      expect(find.textContaining('(you)'), findsOneWidget);
       await ctrl.close();
       client.dispose();
     });
