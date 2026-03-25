@@ -17,6 +17,12 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /visual-demo/,
+    },
+    {
+      name: 'visual-demo',
+      testMatch: /visual-demo/,
+      timeout: 600_000,
     },
   ],
   webServer: [
