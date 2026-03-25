@@ -1,4 +1,4 @@
-const GOLDEN_CONFIG = {
+var GOLDEN_CONFIG = {
   pr: 7,
   images: [
     {
