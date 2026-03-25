@@ -99,7 +99,7 @@ jobs:
           cp .github/golden-compare-template.html golden-review-deploy/index.html
 
           # Generate config.js from failure image filenames
-          echo "const GOLDEN_CONFIG = {" > golden-review-deploy/config.js
+          echo "var GOLDEN_CONFIG = {" > golden-review-deploy/config.js
           echo "  pr: ${{ github.event.pull_request.number }}," >> golden-review-deploy/config.js
           echo "  images: [" >> golden-review-deploy/config.js
           for f in golden-review-deploy/*_testImage.png; do
