@@ -160,7 +160,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final myPlayer = state.myPlayer;
     final hand = myPlayer?.hand ?? [];
     final discard = state.discardPile ?? [];
-    final lastPlayed = discard.isNotEmpty ? discard.last : null;
+    final lastPlayed = state.lastPlayedCardValue;
 
     return Scaffold(
       body: SafeArea(
@@ -560,9 +560,11 @@ class _LastPlayedCard extends StatelessWidget {
       alignment: Alignment.center,
       child: value == null
           ? Text(
-              '\u2014',
+              'Discard Pile',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 36,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
                 color: kCardTextColor.withValues(alpha: 0.4),
               ),
             )

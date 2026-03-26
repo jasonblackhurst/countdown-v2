@@ -71,6 +71,7 @@ async function spectateRoom(page: Page, roomCode: string): Promise<void> {
 
   const codeInput = page.locator('input[aria-label="Room code"]');
   await codeInput.waitFor({ state: 'visible', timeout: 5_000 });
+  await codeInput.click();
   await codeInput.pressSequentially(roomCode, { delay: 100 });
 
   await page.getByRole('button', { name: 'Watch' }).click();
@@ -133,7 +134,7 @@ test('visual demo: 3 players + table display', async () => {
   try {
     // --- Step 1: Player 1 creates a room ---
     await pause(p1.page);
-    const roomCode = await createRoom(p1.page);
+    const roomCode = await createRoom(p1.page, 'Alice');
     console.log(`Room created: ${roomCode}`);
     await pause(p1.page);
 
@@ -161,7 +162,6 @@ test('visual demo: 3 players + table display', async () => {
 
     for (const p of players) {
       await p.page.getByRole('checkbox', { name: '5' }).click();
-      await p.page.getByRole('button', { name: 'Confirm Vote' }).click();
       await pause(p.page, 500);
     }
 
@@ -202,25 +202,15 @@ test('visual demo: 3 players + table display', async () => {
         break;
       }
 
-      // Between rounds: RoundTransitionScreen shows "Round N Complete"
+      // Between rounds: RoundTransitionScreen shows "Round N Complete" with vote UI
       for (const p of players) {
         await expect(p.page.getByText(/Round \d+ Complete/)).toBeVisible({ timeout: 10_000 });
       }
       await pause(p1.page);
 
-      for (const p of players) {
-        await p.page.getByRole('button', { name: 'Continue' }).click();
-      }
-
-      // Now vote UI appears
-      for (const p of players) {
-        await expect(p.page.getByText('Vote: cards per player this round')).toBeVisible({ timeout: 10_000 });
-      }
-      await pause(p1.page);
-
+      // Vote on the transition screen (tap 5 = instant vote)
       for (const p of players) {
         await p.page.getByRole('checkbox', { name: '5' }).click();
-        await p.page.getByRole('button', { name: 'Confirm Vote' }).click();
         await pause(p.page, 500);
       }
 
@@ -247,7 +237,6 @@ test('visual demo: 3 players + table display', async () => {
 
     for (const p of players) {
       await p.page.getByRole('checkbox', { name: '5' }).click();
-      await p.page.getByRole('button', { name: 'Confirm Vote' }).click();
       await pause(p.page, 500);
     }
 
@@ -262,11 +251,11 @@ test('visual demo: 3 players + table display', async () => {
     // After the rematch round, wait for either win/loss or round transition
     await pause(p1.page, 3000);
 
-    // If round transition appeared, dismiss it for a clean view
+    // If round transition appeared, vote to dismiss it
     for (const p of players) {
-      const continueBtn = p.page.getByRole('button', { name: 'Continue' });
-      if (await continueBtn.isVisible().catch(() => false)) {
-        await continueBtn.click();
+      const voteChip = p.page.getByRole('checkbox', { name: '5' });
+      if (await voteChip.isVisible().catch(() => false)) {
+        await voteChip.click();
       }
     }
 

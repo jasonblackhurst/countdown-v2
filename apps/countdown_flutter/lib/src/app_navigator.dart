@@ -104,6 +104,11 @@ class _CountdownAppState extends State<CountdownApp> {
         _transitionLives = state.lives ?? 5;
       });
     }
+
+    // Auto-dismiss transition screen when next round starts
+    if (_showRoundTransition && state.phase == GamePhase.round) {
+      setState(() => _showRoundTransition = false);
+    }
   }
 
   Future<void> _attemptReconnect() async {
@@ -198,7 +203,7 @@ class _CountdownAppState extends State<CountdownApp> {
             roundNumber: _transitionRoundNumber,
             cardsPlayed: _transitionCardsPlayed,
             lives: _transitionLives,
-            onContinue: () => setState(() => _showRoundTransition = false),
+            client: _client,
           );
         }
 

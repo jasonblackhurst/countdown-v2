@@ -25,6 +25,28 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _showCreateDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Create Room'),
+        content: TextField(
+          controller: _nameController,
+          decoration: const InputDecoration(labelText: 'Your name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              widget.client.createRoom(_nameController.text.trim());
+              Navigator.pop(context);
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showJoinDialog() {
     showDialog<void>(
       context: context,
@@ -133,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 48),
                 FilledButton(
-                  onPressed: widget.client.createRoom,
+                  onPressed: _showCreateDialog,
                   child: const Text('Create Room'),
                 ),
                 const SizedBox(height: 12),

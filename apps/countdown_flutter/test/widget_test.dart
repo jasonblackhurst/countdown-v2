@@ -7,6 +7,7 @@ import 'package:countdown_flutter/src/client/game_client.dart';
 import 'package:countdown_flutter/src/screens/game_screen.dart';
 import 'package:countdown_flutter/src/screens/home_screen.dart';
 import 'package:countdown_flutter/src/screens/lobby_screen.dart';
+import 'package:countdown_flutter/src/screens/round_transition_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -146,8 +147,8 @@ void main() {
     });
 
     test('6. createRoom() sends correct JSON', () {
-      client.createRoom();
-      expect(sink.lastSent(), {'type': 'create_room'});
+      client.createRoom('Host');
+      expect(sink.lastSent(), {'type': 'create_room', 'name': 'Host'});
     });
 
     test('7. joinRoom() sends correct JSON', () {
@@ -213,17 +214,29 @@ void main() {
       client.dispose();
     });
 
-    testWidgets('14. tapping Create Room calls client.createRoom()', (
-      tester,
-    ) async {
+    testWidgets('14. tapping Create Room shows name dialog', (tester) async {
       final client = GameClient();
       final (sink, ctrl) = connectFake(client);
 
       await tester.pumpWidget(wrap(HomeScreen(client: client), client));
       await tester.tap(find.text('Create Room'));
+      await tester.pumpAndSettle();
+
+      // Dialog should be visible with name field
+      expect(find.text('Your name'), findsOneWidget);
+      expect(find.text('Create'), findsOneWidget);
+
+      // Enter name and submit
+      await tester.enterText(find.byType(TextField), 'Alice');
+      await tester.tap(find.text('Create'));
       await tester.pump();
 
-      expect(sink.sent.any((m) => m['type'] == 'create_room'), isTrue);
+      expect(
+        sink.sent.any(
+          (m) => m['type'] == 'create_room' && m['name'] == 'Alice',
+        ),
+        isTrue,
+      );
       await ctrl.close();
       client.dispose();
     });
@@ -333,7 +346,11 @@ void main() {
         await tester.pump();
 
         expect(find.text('Start Game'), findsNothing);
-        expect(find.text('Confirm Vote'), findsOneWidget);
+        // Vote chips visible, no Confirm Vote button
+        for (var i = 1; i <= 5; i++) {
+          expect(find.text('$i'), findsOneWidget);
+        }
+        expect(find.text('Confirm Vote'), findsNothing);
         await ctrl.close();
         client.dispose();
       },
@@ -373,7 +390,11 @@ void main() {
         await tester.pump();
 
         expect(find.text('Start Game'), findsNothing);
-        expect(find.text('Confirm Vote'), findsOneWidget);
+        // Vote chips visible, no Confirm Vote button
+        for (var i = 1; i <= 5; i++) {
+          expect(find.text('$i'), findsOneWidget);
+        }
+        expect(find.text('Confirm Vote'), findsNothing);
         await ctrl.close();
         client.dispose();
       },
@@ -1524,6 +1545,253 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Room code'), findsOneWidget);
+        client.dispose();
+      },
+    );
+  });
+
+  // ── Create Room with name ────────────────────────────────────────────────
+
+  group('Create Room with name', () {
+    test('createRoom(name) sends correct JSON with name', () {
+      final client = GameClient();
+      final (sink, ctrl) = connectFake(client);
+      client.createRoom('Alice');
+      expect(sink.lastSent(), {'type': 'create_room', 'name': 'Alice'});
+      ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('tapping Create Room shows name dialog', (tester) async {
+      final client = GameClient();
+      await tester.pumpWidget(wrap(HomeScreen(client: client), client));
+      await tester.tap(find.text('Create Room'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your name'), findsOneWidget);
+      client.dispose();
+    });
+
+    testWidgets(
+      'entering name and tapping Create sends create_room with name',
+      (tester) async {
+        final client = GameClient();
+        final (sink, ctrl) = connectFake(client);
+
+        await tester.pumpWidget(wrap(HomeScreen(client: client), client));
+        await tester.tap(find.text('Create Room'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'Alice');
+        await tester.tap(find.text('Create'));
+        await tester.pump();
+
+        expect(
+          sink.sent.any(
+            (m) => m['type'] == 'create_room' && m['name'] == 'Alice',
+          ),
+          isTrue,
+        );
+        await ctrl.close();
+        client.dispose();
+      },
+    );
+  });
+
+  // ── Discard pile placeholder ─────────────────────────────────────────────
+
+  group('Discard pile placeholder', () {
+    testWidgets('shows Discard Pile text when no cards played', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            roundNumber: 1,
+            discardPile: [],
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 3,
+                'hand': [90, 85, 70],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 3, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Discard Pile'), findsOneWidget);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('shows card value when a card was just played', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            roundNumber: 1,
+            discardPile: [100, 99],
+            lastPlayedBy: {'id': 'p2', 'name': 'Bob', 'card_value': 99},
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 1,
+                'hand': [85],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 1, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      // Should show the last played card value (99), not "Discard Pile"
+      expect(find.text('99'), findsOneWidget);
+      expect(find.text('Discard Pile'), findsNothing);
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets('shows Discard Pile at start of new round even with prior discard', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      ctrl.add(
+        jsonEncode({
+          'type': 'room_joined',
+          'room_code': 'ABCD',
+          'player_id': 'p1',
+        }),
+      );
+      // Round 2 just started — discard pile has cards from round 1,
+      // but last_played_by is null (no one has played this round yet)
+      ctrl.add(
+        jsonEncode(
+          _stateUpdate(
+            phase: 'round',
+            roundNumber: 2,
+            discardPile: [100, 99, 98, 97, 96],
+            lastPlayedBy: null,
+            players: [
+              {
+                'id': 'p1',
+                'name': 'Alice',
+                'hand_size': 3,
+                'hand': [90, 85, 70],
+              },
+              {'id': 'p2', 'name': 'Bob', 'hand_size': 3, 'hand': []},
+            ],
+          ),
+        ),
+      );
+      await Future.microtask(() {});
+
+      await tester.pumpWidget(wrap(GameScreen(client: client), client));
+      await tester.pump();
+
+      expect(find.text('Discard Pile'), findsOneWidget);
+      expect(find.text('96'), findsNothing); // Should NOT show prior round's last card
+      await ctrl.close();
+      client.dispose();
+    });
+  });
+
+  // ── Round transition with voting ─────────────────────────────────────────
+
+  group('RoundTransitionScreen with voting', () {
+    testWidgets('shows vote chips with none pre-selected', (tester) async {
+      final client = GameClient();
+      final (_, ctrl) = connectFake(client);
+
+      await tester.pumpWidget(
+        wrap(
+          RoundTransitionScreen(
+            roundNumber: 1,
+            cardsPlayed: 15,
+            lives: 5,
+            client: client,
+          ),
+          client,
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Round 1 Complete'), findsOneWidget);
+      expect(find.text('15 / 100 cards played'), findsOneWidget);
+      expect(find.text('Confirm Vote'), findsNothing);
+      // Vote chips 1-5
+      for (var i = 1; i <= 5; i++) {
+        expect(find.text('$i'), findsOneWidget);
+      }
+      await ctrl.close();
+      client.dispose();
+    });
+
+    testWidgets(
+      'tapping a vote chip instantly sends vote and shows waiting',
+      (tester) async {
+        final client = GameClient();
+        final (sink, ctrl) = connectFake(client);
+
+        await tester.pumpWidget(
+          wrap(
+            RoundTransitionScreen(
+              roundNumber: 1,
+              cardsPlayed: 15,
+              lives: 5,
+              client: client,
+            ),
+            client,
+          ),
+        );
+        await tester.pump();
+
+        // Tap 3 — should instantly send vote
+        await tester.tap(find.text('3'));
+        await tester.pump();
+
+        expect(
+          sink.sent.any(
+            (m) => m['type'] == 'vote_card_count' && m['count'] == 3,
+          ),
+          isTrue,
+        );
+        expect(find.text('Waiting for other players...'), findsOneWidget);
+        // Vote chips should still be visible for re-voting
+        for (var i = 1; i <= 5; i++) {
+          expect(find.text('$i'), findsOneWidget);
+        }
+        await ctrl.close();
         client.dispose();
       },
     );

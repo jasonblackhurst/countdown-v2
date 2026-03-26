@@ -10,7 +10,9 @@ sealed class ClientMessage {
   static ClientMessage parse(String raw) {
     final map = jsonDecode(raw) as Map<String, dynamic>;
     return switch (map['type'] as String) {
-      'create_room' => const CreateRoomMsg(),
+      'create_room' => CreateRoomMsg(
+        playerName: map['name'] as String? ?? 'Host',
+      ),
       'join_room' => JoinRoomMsg(
         roomCode: map['room_code'] as String,
         playerName: map['name'] as String,
@@ -30,7 +32,8 @@ sealed class ClientMessage {
 }
 
 class CreateRoomMsg extends ClientMessage {
-  const CreateRoomMsg();
+  final String playerName;
+  const CreateRoomMsg({this.playerName = 'Host'});
 }
 
 class JoinRoomMsg extends ClientMessage {
