@@ -40,6 +40,7 @@ Future<void> sendStateUpdate(
   List<int> discardPile = const [],
   List<Map<String, dynamic>>? players,
   bool gameInitialized = false,
+  Map<String, dynamic>? lastPlayedBy,
 }) async {
   controller.add(
     jsonEncode({
@@ -50,6 +51,7 @@ Future<void> sendStateUpdate(
         'round_number': roundNumber,
         'discard_pile': discardPile,
         'game_initialized': gameInitialized,
+        'last_played_by': lastPlayedBy,
         'players':
             players ??
             [

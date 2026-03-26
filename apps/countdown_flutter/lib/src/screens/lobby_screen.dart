@@ -13,7 +13,7 @@ class LobbyScreen extends StatefulWidget {
 }
 
 class _LobbyScreenState extends State<LobbyScreen> {
-  int _selectedCount = 1;
+  int? _selectedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -105,16 +105,21 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       child: ChoiceChip(
                         label: Text('$n'),
                         selected: _selectedCount == n,
-                        onSelected: (_) => setState(() => _selectedCount = n),
+                        onSelected: (_) {
+                          widget.client.voteCardCount(n);
+                          setState(() => _selectedCount = n);
+                        },
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () => widget.client.voteCardCount(_selectedCount),
-                child: const Text('Confirm Vote'),
-              ),
+              if (_selectedCount != null) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Waiting for other players...',
+                  style: TextStyle(fontSize: 16, color: Colors.white70),
+                ),
+              ],
             ],
           ],
         ),

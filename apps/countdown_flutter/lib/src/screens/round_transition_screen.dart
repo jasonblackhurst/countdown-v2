@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../client/game_client.dart';
 import '../theme.dart';
 
 /// Interstitial screen shown between rounds, displaying round completion
-/// stats before the player proceeds to the vote UI.
-class RoundTransitionScreen extends StatelessWidget {
+/// stats and allowing the player to vote for the next round's card count.
+class RoundTransitionScreen extends StatefulWidget {
   final int roundNumber;
   final int cardsPlayed;
   final int lives;
-  final VoidCallback onContinue;
+  final GameClient client;
 
   const RoundTransitionScreen({
     super.key,
     required this.roundNumber,
     required this.cardsPlayed,
     required this.lives,
-    required this.onContinue,
+    required this.client,
   });
+
+  @override
+  State<RoundTransitionScreen> createState() => _RoundTransitionScreenState();
+}
+
+class _RoundTransitionScreenState extends State<RoundTransitionScreen> {
+  int? _selectedCount;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +38,7 @@ class RoundTransitionScreen extends StatelessWidget {
             children: [
               // Round complete title
               Text(
-                'Round $roundNumber Complete',
+                'Round ${widget.roundNumber} Complete',
                 style: GoogleFonts.playfairDisplay(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -41,14 +49,14 @@ class RoundTransitionScreen extends StatelessWidget {
 
               // Cards played progress
               Text(
-                '$cardsPlayed / 100 cards played',
+                '${widget.cardsPlayed} / 100 cards played',
                 style: const TextStyle(fontSize: 18, color: Colors.white),
               ),
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
-                  value: cardsPlayed / 100,
+                  value: widget.cardsPlayed / 100,
                   minHeight: 12,
                   backgroundColor: Colors.white.withValues(alpha: 0.15),
                   valueColor: const AlwaysStoppedAnimation<Color>(kAccentColor),
@@ -63,18 +71,43 @@ class RoundTransitionScreen extends StatelessWidget {
                   Icon(Icons.favorite, color: Colors.red.shade400, size: 24),
                   const SizedBox(width: 8),
                   Text(
-                    '$lives lives remaining',
+                    '${widget.lives} lives remaining',
                     style: const TextStyle(fontSize: 18, color: Colors.white),
                   ),
                 ],
               ),
               const SizedBox(height: 48),
 
-              // Continue button
-              FilledButton(
-                onPressed: onContinue,
-                child: const Text('Continue'),
+              // Vote UI — chips always visible, tap to vote/re-vote
+              const Text(
+                'Cards per player next round',
+                style: TextStyle(fontSize: 16, color: Colors.white),
               ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var n = 1; n <= 5; n++)
+                    Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: ChoiceChip(
+                        label: Text('$n'),
+                        selected: _selectedCount == n,
+                        onSelected: (_) {
+                          widget.client.voteCardCount(n);
+                          setState(() => _selectedCount = n);
+                        },
+                      ),
+                    ),
+                ],
+              ),
+              if (_selectedCount != null) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Waiting for other players...',
+                  style: TextStyle(fontSize: 16, color: Colors.white70),
+                ),
+              ],
             ],
           ),
         ),

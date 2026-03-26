@@ -113,6 +113,16 @@ void main() {
   // ── RoundTransitionScreen widget ────────────────────────────────────────
 
   group('RoundTransitionScreen', () {
+    late GameClient client;
+
+    setUp(() {
+      client = GameClient();
+    });
+
+    tearDown(() {
+      client.dispose();
+    });
+
     testWidgets('RT4. shows "Round N Complete" title', (tester) async {
       await tester.pumpWidget(
         _wrap(
@@ -120,7 +130,7 @@ void main() {
             roundNumber: 3,
             cardsPlayed: 30,
             lives: 4,
-            onContinue: () {},
+            client: client,
           ),
         ),
       );
@@ -135,7 +145,7 @@ void main() {
             roundNumber: 2,
             cardsPlayed: 20,
             lives: 5,
-            onContinue: () {},
+            client: client,
           ),
         ),
       );
@@ -152,7 +162,7 @@ void main() {
             roundNumber: 2,
             cardsPlayed: 50,
             lives: 5,
-            onContinue: () {},
+            client: client,
           ),
         ),
       );
@@ -167,7 +177,7 @@ void main() {
             roundNumber: 2,
             cardsPlayed: 20,
             lives: 3,
-            onContinue: () {},
+            client: client,
           ),
         ),
       );
@@ -176,38 +186,90 @@ void main() {
       expect(find.byIcon(Icons.favorite), findsOneWidget);
     });
 
-    testWidgets('RT8. shows a Continue button', (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          RoundTransitionScreen(
-            roundNumber: 1,
-            cardsPlayed: 10,
-            lives: 5,
-            onContinue: () {},
-          ),
-        ),
-      );
-
-      expect(find.text('Continue'), findsOneWidget);
-    });
-
-    testWidgets('RT9. tapping Continue calls onContinue callback', (
+    testWidgets('RT8. shows vote chips instead of Continue button', (
       tester,
     ) async {
-      var continued = false;
       await tester.pumpWidget(
         _wrap(
           RoundTransitionScreen(
             roundNumber: 1,
             cardsPlayed: 10,
             lives: 5,
-            onContinue: () => continued = true,
+            client: client,
           ),
         ),
       );
 
-      await tester.tap(find.text('Continue'));
-      expect(continued, isTrue);
+      // Vote chips 1-5 visible, no Confirm Vote button
+      for (var i = 1; i <= 5; i++) {
+        expect(find.text('$i'), findsOneWidget);
+      }
+      expect(find.text('Confirm Vote'), findsNothing);
+      expect(find.text('Continue'), findsNothing);
+    });
+
+    testWidgets(
+      'RT9. tapping a vote chip instantly sends vote and shows waiting with chips still visible',
+      (tester) async {
+        final (sink, ctrl) = connectFake(client);
+        await tester.pumpWidget(
+          _wrap(
+            RoundTransitionScreen(
+              roundNumber: 1,
+              cardsPlayed: 10,
+              lives: 5,
+              client: client,
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('3'));
+        await tester.pump();
+
+        expect(
+          sink.sent.any(
+            (m) => m['type'] == 'vote_card_count' && m['count'] == 3,
+          ),
+          isTrue,
+        );
+        expect(find.text('Waiting for other players...'), findsOneWidget);
+        // Vote chips should still be visible for re-voting
+        for (var i = 1; i <= 5; i++) {
+          expect(find.text('$i'), findsOneWidget);
+        }
+        await ctrl.close();
+      },
+    );
+
+    testWidgets('RT9b. tapping a different chip after voting re-sends vote', (
+      tester,
+    ) async {
+      final (sink, ctrl) = connectFake(client);
+      await tester.pumpWidget(
+        _wrap(
+          RoundTransitionScreen(
+            roundNumber: 1,
+            cardsPlayed: 10,
+            lives: 5,
+            client: client,
+          ),
+        ),
+      );
+
+      // First vote
+      await tester.tap(find.text('3'));
+      await tester.pump();
+
+      // Change vote
+      await tester.tap(find.text('5'));
+      await tester.pump();
+
+      expect(
+        sink.sent.any((m) => m['type'] == 'vote_card_count' && m['count'] == 5),
+        isTrue,
+      );
+      expect(find.text('Waiting for other players...'), findsOneWidget);
+      await ctrl.close();
     });
 
     testWidgets('RT10. progress bar reflects correct fraction', (tester) async {
@@ -217,7 +279,7 @@ void main() {
             roundNumber: 5,
             cardsPlayed: 75,
             lives: 2,
-            onContinue: () {},
+            client: client,
           ),
         ),
       );
@@ -336,7 +398,7 @@ void main() {
     );
 
     testWidgets(
-      'RT13. tapping Continue on interstitial shows lobby/vote screen',
+      'RT13. transition screen auto-dismisses when phase becomes round',
       (tester) async {
         final client = GameClient();
         final (_, ctrl) = connectFake(client);
@@ -380,7 +442,7 @@ void main() {
         );
         await tester.pump();
 
-        // Transition to lobby
+        // Transition to lobby — shows round transition screen
         ctrl.add(
           jsonEncode(
             _stateUpdate(
@@ -393,14 +455,38 @@ void main() {
         );
         await Future.microtask(() {});
         await tester.pump();
+        expect(find.byType(RoundTransitionScreen), findsOneWidget);
 
-        // Tap Continue
-        await tester.tap(find.text('Continue'));
+        // Vote on the transition screen
+        await tester.tap(find.text('3'));
+        await tester.pump();
+        expect(find.text('Waiting for other players...'), findsOneWidget);
+
+        // Server starts next round — transition screen auto-dismisses
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              roundNumber: 2,
+              discardPile: [100, 99, 98, 97, 96],
+              lives: 4,
+              players: [
+                {
+                  'id': 'p1',
+                  'name': 'Alice',
+                  'hand_size': 3,
+                  'hand': [80, 70, 60],
+                },
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 3, 'hand': []},
+              ],
+            ),
+          ),
+        );
+        await Future.microtask(() {});
         await tester.pump();
 
-        // Interstitial should be gone, lobby should be visible
+        // Interstitial should be gone
         expect(find.byType(RoundTransitionScreen), findsNothing);
-        expect(find.text('Confirm Vote'), findsOneWidget);
 
         await ctrl.close();
         client.dispose();
@@ -453,6 +539,11 @@ class _TestNavigatorState extends State<_TestNavigator> {
         _transitionLives = state.lives ?? 5;
       });
     }
+
+    // Auto-dismiss transition screen when next round starts
+    if (_showRoundTransition && state.phase == GamePhase.round) {
+      setState(() => _showRoundTransition = false);
+    }
   }
 
   @override
@@ -467,7 +558,7 @@ class _TestNavigatorState extends State<_TestNavigator> {
             roundNumber: _transitionRoundNumber,
             cardsPlayed: _transitionCardsPlayed,
             lives: _transitionLives,
-            onContinue: () => setState(() => _showRoundTransition = false),
+            client: widget.client,
           );
         }
 

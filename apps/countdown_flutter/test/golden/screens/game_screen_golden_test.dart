@@ -22,6 +22,7 @@ void main() {
           lives: 3,
           roundNumber: 2,
           discardPile: [100, 99, 97],
+          lastPlayedBy: {'id': 'p1', 'name': 'Alice', 'card_value': 97},
           players: [
             {
               'id': 'p1',

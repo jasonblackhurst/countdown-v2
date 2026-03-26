@@ -12,7 +12,7 @@ class PileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = client.state;
     final discard = state.discardPile ?? [];
-    final lastPlayed = discard.isNotEmpty ? discard.last : null;
+    final lastPlayed = state.lastPlayedCardValue;
 
     return Scaffold(
       backgroundColor: kBackgroundColor,
@@ -21,11 +21,13 @@ class PileScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              lastPlayed == null ? '—' : '$lastPlayed',
-              style: const TextStyle(
-                fontSize: 160,
+              lastPlayed == null ? 'Discard Pile' : '$lastPlayed',
+              style: TextStyle(
+                fontSize: lastPlayed == null ? 48 : 160,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: lastPlayed == null
+                    ? Colors.white.withValues(alpha: 0.4)
+                    : Colors.white,
               ),
             ),
             const SizedBox(height: 16),

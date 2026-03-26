@@ -40,10 +40,18 @@ export async function createPlayer(browser: Browser, name: string): Promise<Play
 }
 
 /**
- * Alice creates a room and returns the 4-letter room code.
+ * Creates a room by entering a name in the Create Room dialog.
+ * Returns the 4-letter room code.
  */
-export async function createRoom(page: Page): Promise<string> {
+export async function createRoom(page: Page, name: string = 'Host'): Promise<string> {
   await page.getByRole('button', { name: 'Create Room' }).click();
+
+  const nameInput = page.locator('input[aria-label="Your name"]');
+  await nameInput.waitFor({ state: 'visible', timeout: 5_000 });
+  await nameInput.click();
+  await nameInput.pressSequentially(name, { delay: 100 });
+
+  await page.getByRole('button', { name: 'Create' }).click();
 
   const roomCode = await page.waitForFunction(() => {
     const text = document.body.innerText;
@@ -62,10 +70,12 @@ export async function joinRoom(page: Page, roomCode: string, name: string): Prom
 
   const nameInput = page.locator('input[aria-label="Your name"]');
   await nameInput.waitFor({ state: 'visible', timeout: 5_000 });
+  await nameInput.click();
   await nameInput.pressSequentially(name, { delay: 100 });
 
   const codeInput = page.locator('input[aria-label="Room code"]');
   await codeInput.waitFor({ state: 'visible', timeout: 5_000 });
+  await codeInput.click();
   await codeInput.pressSequentially(roomCode, { delay: 100 });
 
   await page.getByRole('button', { name: 'Join', exact: true }).click();
@@ -87,14 +97,10 @@ export async function startGameAndVote(players: Player[], voteCount: number = 1)
     await expect(p.page.getByText('Vote: cards per player this round')).toBeVisible({ timeout: 8_000 });
   }
 
-  // Select vote count if not 1 (1 is selected by default)
+  // Tap the vote count chip — instant vote, no Confirm button needed.
   // Flutter ChoiceChips render as generic elements, not radio buttons.
-  // Target them by their text label within the chip row.
   for (const p of players) {
-    if (voteCount !== 1) {
-      await p.page.getByRole('checkbox', { name: String(voteCount) }).click();
-    }
-    await p.page.getByRole('button', { name: 'Confirm Vote' }).click();
+    await p.page.getByRole('checkbox', { name: String(voteCount) }).click();
   }
 
   // Wait for game screen on all players
@@ -114,10 +120,7 @@ export async function voteForRound(players: Player[], voteCount: number = 1): Pr
   }
 
   for (const p of players) {
-    if (voteCount !== 1) {
-      await p.page.getByRole('checkbox', { name: String(voteCount) }).click();
-    }
-    await p.page.getByRole('button', { name: 'Confirm Vote' }).click();
+    await p.page.getByRole('checkbox', { name: String(voteCount) }).click();
   }
 
   for (const p of players) {

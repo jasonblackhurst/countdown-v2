@@ -86,6 +86,7 @@ class Room {
     if (_cardCountVotes.length == _connections.length) {
       final agreed = _cardCountVotes.values.reduce((a, b) => a < b ? a : b);
       _cardCountVotes.clear();
+      _lastPlayedBy = null;
       _engine.startRound(agreed);
       _broadcastState();
     }

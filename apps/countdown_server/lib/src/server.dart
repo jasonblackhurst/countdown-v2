@@ -84,9 +84,9 @@ void _handle(
   RoomManager rooms,
 ) {
   switch (msg) {
-    case CreateRoomMsg():
+    case CreateRoomMsg(:final playerName):
       final room = rooms.createRoom();
-      final pid = room.addPlayer('Host', sink);
+      final pid = room.addPlayer(playerName, sink);
       setContext(room.code, pid);
       sink.add(encode(roomCreatedMsg(room.code, pid)));
 

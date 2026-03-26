@@ -155,7 +155,7 @@ class GameClient extends ChangeNotifier {
 
   // ── Outgoing ────────────────────────────────────────────────────────────
 
-  void createRoom() => _send({'type': 'create_room'});
+  void createRoom(String name) => _send({'type': 'create_room', 'name': name});
 
   void joinRoom(String roomCode, String playerName) =>
       _send({'type': 'join_room', 'room_code': roomCode, 'name': playerName});

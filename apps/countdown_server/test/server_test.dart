@@ -651,6 +651,47 @@ void main() {
       final state = lastUpdate['state'] as Map<String, dynamic>;
       expect(state['last_played_by'], isNull);
     });
+
+    test(
+      '30b. last_played_by is null when a new round starts after voting',
+      () {
+        final manager = RoomManager();
+        final room = manager.createRoom();
+        final sinks = [_RecordingSink(), _RecordingSink()];
+        final ids = [
+          room.addPlayer('Alice', sinks[0]),
+          room.addPlayer('Bob', sinks[1]),
+        ];
+        room.startGame(ids.first);
+        room.voteCardCount(ids[0], 1);
+        room.voteCardCount(ids[1], 1);
+
+        // Play all cards to complete the round
+        while (room.state.players.any((p) => p.hand.cards.isNotEmpty)) {
+          final highest = room.state.players
+              .expand((p) => p.hand.cards)
+              .reduce((a, b) => a.value > b.value ? a : b);
+          final holderId = room.state.players
+              .firstWhere((p) => p.hand.cards.contains(highest))
+              .id;
+          final roomPlayerId = ids.firstWhere(
+            (id) => room.engineIdForPlayerId(id) == holderId,
+          );
+          room.playCard(roomPlayerId, highest);
+        }
+
+        // Now vote to start round 2
+        room.voteCardCount(ids[0], 1);
+        room.voteCardCount(ids[1], 1);
+
+        // The state broadcast for round 2 should have last_played_by = null
+        final lastUpdate = sinks[0].msgsOfType('state_update').last;
+        final state = lastUpdate['state'] as Map<String, dynamic>;
+        expect(state['phase'], 'round');
+        expect(state['round_number'], 2);
+        expect(state['last_played_by'], isNull);
+      },
+    );
   });
 
   // ── Reconnection ──────────────────────────────────────────────────────────
@@ -1021,6 +1062,36 @@ void main() {
       final updates = spectatorSink.msgsOfType('state_update').toList();
       expect(updates, isNotEmpty);
       expect(updates.last['state']['phase'], 'lobby');
+    });
+  });
+
+  // ── CreateRoomMsg with player name ────────────────────────────────────────
+
+  group('CreateRoomMsg with name', () {
+    test('create_room message with name is parsed correctly', () {
+      final msg = ClientMessage.parse(
+        '{"type": "create_room", "name": "Alice"}',
+      );
+      expect(msg, isA<CreateRoomMsg>());
+      expect((msg as CreateRoomMsg).playerName, 'Alice');
+    });
+
+    test('create_room without name defaults to Host', () {
+      final msg = ClientMessage.parse('{"type": "create_room"}');
+      expect(msg, isA<CreateRoomMsg>());
+      expect((msg as CreateRoomMsg).playerName, 'Host');
+    });
+
+    test('create_room uses provided name in lobby state', () {
+      final manager = RoomManager();
+      final room = manager.createRoom();
+      final sink = _RecordingSink();
+      room.addPlayer('Alice', sink);
+
+      final updates = sink.msgsOfType('state_update').toList();
+      expect(updates, isNotEmpty);
+      final players = updates.last['state']['players'] as List;
+      expect(players.first['name'], 'Alice');
     });
   });
 }
