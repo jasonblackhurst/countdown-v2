@@ -1682,48 +1682,54 @@ void main() {
       client.dispose();
     });
 
-    testWidgets('shows Discard Pile at start of new round even with prior discard', (tester) async {
-      final client = GameClient();
-      final (_, ctrl) = connectFake(client);
+    testWidgets(
+      'shows Discard Pile at start of new round even with prior discard',
+      (tester) async {
+        final client = GameClient();
+        final (_, ctrl) = connectFake(client);
 
-      ctrl.add(
-        jsonEncode({
-          'type': 'room_joined',
-          'room_code': 'ABCD',
-          'player_id': 'p1',
-        }),
-      );
-      // Round 2 just started — discard pile has cards from round 1,
-      // but last_played_by is null (no one has played this round yet)
-      ctrl.add(
-        jsonEncode(
-          _stateUpdate(
-            phase: 'round',
-            roundNumber: 2,
-            discardPile: [100, 99, 98, 97, 96],
-            lastPlayedBy: null,
-            players: [
-              {
-                'id': 'p1',
-                'name': 'Alice',
-                'hand_size': 3,
-                'hand': [90, 85, 70],
-              },
-              {'id': 'p2', 'name': 'Bob', 'hand_size': 3, 'hand': []},
-            ],
+        ctrl.add(
+          jsonEncode({
+            'type': 'room_joined',
+            'room_code': 'ABCD',
+            'player_id': 'p1',
+          }),
+        );
+        // Round 2 just started — discard pile has cards from round 1,
+        // but last_played_by is null (no one has played this round yet)
+        ctrl.add(
+          jsonEncode(
+            _stateUpdate(
+              phase: 'round',
+              roundNumber: 2,
+              discardPile: [100, 99, 98, 97, 96],
+              lastPlayedBy: null,
+              players: [
+                {
+                  'id': 'p1',
+                  'name': 'Alice',
+                  'hand_size': 3,
+                  'hand': [90, 85, 70],
+                },
+                {'id': 'p2', 'name': 'Bob', 'hand_size': 3, 'hand': []},
+              ],
+            ),
           ),
-        ),
-      );
-      await Future.microtask(() {});
+        );
+        await Future.microtask(() {});
 
-      await tester.pumpWidget(wrap(GameScreen(client: client), client));
-      await tester.pump();
+        await tester.pumpWidget(wrap(GameScreen(client: client), client));
+        await tester.pump();
 
-      expect(find.text('Discard Pile'), findsOneWidget);
-      expect(find.text('96'), findsNothing); // Should NOT show prior round's last card
-      await ctrl.close();
-      client.dispose();
-    });
+        expect(find.text('Discard Pile'), findsOneWidget);
+        expect(
+          find.text('96'),
+          findsNothing,
+        ); // Should NOT show prior round's last card
+        await ctrl.close();
+        client.dispose();
+      },
+    );
   });
 
   // ── Round transition with voting ─────────────────────────────────────────
@@ -1757,43 +1763,40 @@ void main() {
       client.dispose();
     });
 
-    testWidgets(
-      'tapping a vote chip instantly sends vote and shows waiting',
-      (tester) async {
-        final client = GameClient();
-        final (sink, ctrl) = connectFake(client);
+    testWidgets('tapping a vote chip instantly sends vote and shows waiting', (
+      tester,
+    ) async {
+      final client = GameClient();
+      final (sink, ctrl) = connectFake(client);
 
-        await tester.pumpWidget(
-          wrap(
-            RoundTransitionScreen(
-              roundNumber: 1,
-              cardsPlayed: 15,
-              lives: 5,
-              client: client,
-            ),
-            client,
+      await tester.pumpWidget(
+        wrap(
+          RoundTransitionScreen(
+            roundNumber: 1,
+            cardsPlayed: 15,
+            lives: 5,
+            client: client,
           ),
-        );
-        await tester.pump();
+          client,
+        ),
+      );
+      await tester.pump();
 
-        // Tap 3 — should instantly send vote
-        await tester.tap(find.text('3'));
-        await tester.pump();
+      // Tap 3 — should instantly send vote
+      await tester.tap(find.text('3'));
+      await tester.pump();
 
-        expect(
-          sink.sent.any(
-            (m) => m['type'] == 'vote_card_count' && m['count'] == 3,
-          ),
-          isTrue,
-        );
-        expect(find.text('Waiting for other players...'), findsOneWidget);
-        // Vote chips should still be visible for re-voting
-        for (var i = 1; i <= 5; i++) {
-          expect(find.text('$i'), findsOneWidget);
-        }
-        await ctrl.close();
-        client.dispose();
-      },
-    );
+      expect(
+        sink.sent.any((m) => m['type'] == 'vote_card_count' && m['count'] == 3),
+        isTrue,
+      );
+      expect(find.text('Waiting for other players...'), findsOneWidget);
+      // Vote chips should still be visible for re-voting
+      for (var i = 1; i <= 5; i++) {
+        expect(find.text('$i'), findsOneWidget);
+      }
+      await ctrl.close();
+      client.dispose();
+    });
   });
 }

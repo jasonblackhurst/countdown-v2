@@ -208,35 +208,38 @@ void main() {
       expect(find.text('Continue'), findsNothing);
     });
 
-    testWidgets('RT9. tapping a vote chip instantly sends vote and shows waiting with chips still visible', (
-      tester,
-    ) async {
-      final (sink, ctrl) = connectFake(client);
-      await tester.pumpWidget(
-        _wrap(
-          RoundTransitionScreen(
-            roundNumber: 1,
-            cardsPlayed: 10,
-            lives: 5,
-            client: client,
+    testWidgets(
+      'RT9. tapping a vote chip instantly sends vote and shows waiting with chips still visible',
+      (tester) async {
+        final (sink, ctrl) = connectFake(client);
+        await tester.pumpWidget(
+          _wrap(
+            RoundTransitionScreen(
+              roundNumber: 1,
+              cardsPlayed: 10,
+              lives: 5,
+              client: client,
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.tap(find.text('3'));
-      await tester.pump();
+        await tester.tap(find.text('3'));
+        await tester.pump();
 
-      expect(
-        sink.sent.any((m) => m['type'] == 'vote_card_count' && m['count'] == 3),
-        isTrue,
-      );
-      expect(find.text('Waiting for other players...'), findsOneWidget);
-      // Vote chips should still be visible for re-voting
-      for (var i = 1; i <= 5; i++) {
-        expect(find.text('$i'), findsOneWidget);
-      }
-      await ctrl.close();
-    });
+        expect(
+          sink.sent.any(
+            (m) => m['type'] == 'vote_card_count' && m['count'] == 3,
+          ),
+          isTrue,
+        );
+        expect(find.text('Waiting for other players...'), findsOneWidget);
+        // Vote chips should still be visible for re-voting
+        for (var i = 1; i <= 5; i++) {
+          expect(find.text('$i'), findsOneWidget);
+        }
+        await ctrl.close();
+      },
+    );
 
     testWidgets('RT9b. tapping a different chip after voting re-sends vote', (
       tester,
