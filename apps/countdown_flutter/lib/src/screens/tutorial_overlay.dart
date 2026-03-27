@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../theme.dart';
 
@@ -117,7 +116,8 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                         const SizedBox(height: 32),
                         Text(
                           page.title,
-                          style: GoogleFonts.playfairDisplay(
+                          style: const TextStyle(
+                            fontFamily: 'PlayfairDisplay',
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../client/game_client.dart';
 import '../theme.dart';
@@ -39,7 +38,8 @@ class _RoundTransitionScreenState extends State<RoundTransitionScreen> {
               // Round complete title
               Text(
                 'Round ${widget.roundNumber} Complete',
-                style: GoogleFonts.playfairDisplay(
+                style: const TextStyle(
+                  fontFamily: 'PlayfairDisplay',
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: kAccentColor,
@@ -101,13 +101,15 @@ class _RoundTransitionScreenState extends State<RoundTransitionScreen> {
                     ),
                 ],
               ),
-              if (_selectedCount != null) ...[
-                const SizedBox(height: 16),
-                const Text(
+              const SizedBox(height: 16),
+              AnimatedOpacity(
+                opacity: _selectedCount != null ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: const Text(
                   'Waiting for other players...',
                   style: TextStyle(fontSize: 16, color: Colors.white70),
                 ),
-              ],
+              ),
             ],
           ),
         ),

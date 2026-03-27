@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:countdown_flutter/src/client/game_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 // ── Test doubles (shared with widget_test.dart pattern) ──────────────────────
 
@@ -165,7 +164,6 @@ void testGoldenAcrossViewports({
 }) {
   for (final viewport in TestViewport.values) {
     testWidgets('$description - ${viewport.name}', (tester) async {
-      GoogleFonts.config.allowRuntimeFetching = false;
       final client = GameClient();
       final (_, controller) = connectFake(client);
 

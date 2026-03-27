@@ -113,13 +113,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     ),
                 ],
               ),
-              if (_selectedCount != null) ...[
-                const SizedBox(height: 8),
-                const Text(
+              const SizedBox(height: 8),
+              AnimatedOpacity(
+                opacity: _selectedCount != null ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: const Text(
                   'Waiting for other players...',
                   style: TextStyle(fontSize: 16, color: Colors.white70),
                 ),
-              ],
+              ),
             ],
           ],
         ),
