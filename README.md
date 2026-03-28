@@ -89,6 +89,22 @@ cd apps/countdown_server      && dart test
 cd apps/countdown_flutter     && flutter test
 ```
 
+## Golden (Screenshot) Tests
+
+The Flutter app has golden tests that compare rendered screens against reference PNGs at multiple viewport sizes (iPhone SE, iPhone 14 Pro, desktop).
+
+- **CI generates the reference goldens** on Linux via the `update-goldens.yml` workflow. These are committed to the repo.
+- **Locally generated goldens differ** due to platform font rendering (macOS vs Linux), so they should not be committed.
+- To prevent local goldens from showing in git:
+  ```bash
+  git ls-files apps/countdown_flutter/test/golden/screens/goldens/*.png | xargs git update-index --assume-unchanged
+  ```
+- To update goldens locally (for local test runs):
+  ```bash
+  cd apps/countdown_flutter && flutter test --update-goldens
+  ```
+- On a PR, if golden tests fail, CI deploys a visual diff review page and comments a link. Reviewers can approve changes by commenting `/approve-goldens`.
+
 ## Architecture
 
 ### `countdown_core` (packages/countdown_core)
