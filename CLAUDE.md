@@ -63,6 +63,17 @@ flutter run -d macos               # in apps/countdown_flutter
 - **Per-player hand serialization**: `stateUpdateMsg` takes an optional `localEnginePlayerId`; `_broadcastState` iterates connections individually and passes each player's engine ID so they receive their own card values. Other players' `hand` arrays are always empty.
 - **macOS sandbox**: both `DebugProfile.entitlements` and `Release.entitlements` need `com.apple.security.network.client` for the app to open WebSocket connections. The scaffold only includes `network.server` by default.
 
+## Golden Tests
+
+- **CI (Linux) is the source of truth** for golden PNG files. The `update-goldens.yml` workflow generates and commits them.
+- **Never commit local goldens.** Font rendering differs across platforms (macOS vs Linux), so local goldens won't match CI.
+- Run `flutter test --update-goldens` locally to generate goldens for your environment, but use `assume-unchanged` to keep them out of git:
+  ```bash
+  git ls-files apps/countdown_flutter/test/golden/screens/goldens/*.png | xargs git update-index --assume-unchanged
+  ```
+- To re-track them: replace `--assume-unchanged` with `--no-assume-unchanged`.
+- The `approve-goldens.yml` workflow lets reviewers accept golden changes on a PR by commenting `/approve-goldens`.
+
 ## Known Gotchas
 
 - **Port 8080 in use**: the old server process may still be running. `lsof -ti:8080 | xargs kill -9` before restarting.
