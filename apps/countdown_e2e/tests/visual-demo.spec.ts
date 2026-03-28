@@ -72,7 +72,7 @@ async function spectateRoom(page: Page, roomCode: string): Promise<void> {
   const codeInput = page.locator('input[aria-label="Room code"]');
   await codeInput.waitFor({ state: 'visible', timeout: 5_000 });
   await codeInput.click();
-  await codeInput.pressSequentially(roomCode, { delay: 100 });
+  await codeInput.fill(roomCode);
 
   await page.getByRole('button', { name: 'Watch' }).click();
 }
