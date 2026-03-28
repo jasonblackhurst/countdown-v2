@@ -8,7 +8,6 @@ import 'package:countdown_flutter/src/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-
 // ── Test doubles ──────────────────────────────────────────────────────────
 
 class _FakeSink implements MessageSink {
@@ -74,38 +73,32 @@ void main() {
     });
 
     testWidgets('T2. scaffold background is deep navy', (tester) async {
-
       final theme = countdownTheme();
       expect(theme.scaffoldBackgroundColor, kBackgroundColor);
     });
 
     testWidgets('T3. primary color is warm amber/gold', (tester) async {
-
       final theme = countdownTheme();
       expect(theme.colorScheme.primary, kAccentColor);
     });
 
     testWidgets('T4. Material 3 is enabled', (tester) async {
-
       final theme = countdownTheme();
       expect(theme.useMaterial3, isTrue);
     });
 
     testWidgets('T5. card theme uses cream/off-white color', (tester) async {
-
       final theme = countdownTheme();
       expect(theme.cardTheme.color, kCardColor);
     });
 
     testWidgets('T6. card theme has rounded corners', (tester) async {
-
       final theme = countdownTheme();
       final shape = theme.cardTheme.shape as RoundedRectangleBorder;
       expect(shape.borderRadius, BorderRadius.circular(12));
     });
 
     testWidgets('T7. app bar uses Playfair Display font', (tester) async {
-
       final theme = countdownTheme();
       expect(
         theme.appBarTheme.titleTextStyle?.fontFamily,
@@ -114,7 +107,6 @@ void main() {
     });
 
     testWidgets('T8. dialog title uses Playfair Display font', (tester) async {
-
       final theme = countdownTheme();
       expect(
         theme.dialogTheme.titleTextStyle?.fontFamily,
@@ -125,7 +117,6 @@ void main() {
 
   group('HomeScreen with dark theme', () {
     testWidgets('T9. scaffold uses dark background color', (tester) async {
-
       final client = GameClient();
       await tester.pumpWidget(
         _wrapWithTheme(HomeScreen(client: client), client),
@@ -138,7 +129,6 @@ void main() {
     });
 
     testWidgets('T10. title uses font family from appBarTheme', (tester) async {
-
       final client = GameClient();
       await tester.pumpWidget(
         _wrapWithTheme(HomeScreen(client: client), client),
@@ -153,7 +143,6 @@ void main() {
 
   group('GameScreen card styling with dark theme', () {
     testWidgets('T11. Card widgets use cream color from theme', (tester) async {
-
       final client = GameClient();
       final (_, ctrl) = _connectFake(client);
 
@@ -200,7 +189,6 @@ void main() {
     testWidgets('T12. card number text uses dark color for contrast', (
       tester,
     ) async {
-
       final client = GameClient();
       final (_, ctrl) = _connectFake(client);
 

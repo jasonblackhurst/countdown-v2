@@ -38,7 +38,8 @@ ThemeData countdownTheme() {
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(fontFamily: 'PlayfairDisplay',
+      titleTextStyle: TextStyle(
+        fontFamily: 'PlayfairDisplay',
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: Colors.white,
@@ -82,7 +83,8 @@ ThemeData countdownTheme() {
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: kSurfaceColor,
-      titleTextStyle: TextStyle(fontFamily: 'PlayfairDisplay',
+      titleTextStyle: TextStyle(
+        fontFamily: 'PlayfairDisplay',
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: Colors.white,

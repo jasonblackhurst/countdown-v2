@@ -1,5 +1,9 @@
 # Countdown — Project Instructions for Claude
 
+## Workflow
+
+Always create a PR after completing a feature or fix. Standard workflow: branch → implement → test → commit → push → create PR.
+
 ## What This Is
 
 A cooperative card game based on The Mind, played in **descending order from 100 to 1**.
@@ -73,6 +77,19 @@ flutter run -d macos               # in apps/countdown_flutter
   ```
 - To re-track them: replace `--assume-unchanged` with `--no-assume-unchanged`.
 - The `approve-goldens.yml` workflow lets reviewers accept golden changes on a PR by commenting `/approve-goldens`.
+- When creating golden test files, never gitignore them if CI needs to commit/update them. Use `git update-index --assume-unchanged` for local-only ignoring.
+
+## CI/CD
+
+When modifying CI/CD pipelines or GitHub Actions workflows, always run a local validation step (e.g., `act` or dry-run) before pushing. Double-check image paths, permissions (gcr.io vs Artifact Registry), and yaml syntax.
+
+## Testing
+
+After implementing game logic or server changes, verify the full multiplayer flow end-to-end (player join → hand dealt → play → game over) before considering the task complete. Watch for race conditions in WebSocket broadcasts and empty hand bugs.
+
+## Flutter Web Testing
+
+For Flutter web Playwright tests: GestureDetector creates `role='group'`, not `'button'`. Use `Semantics` widget wrapping for clickable elements. Expect CanvasKit renderer to take extra time loading — add appropriate waits.
 
 ## Known Gotchas
 
