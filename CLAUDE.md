@@ -1,5 +1,9 @@
 # Countdown — Project Instructions for Claude
 
+## Workflow
+
+Always create a PR after completing a feature or fix. Standard workflow: branch → implement → test → commit → push → create PR.
+
 ## What This Is
 
 A cooperative card game based on The Mind, played in **descending order from 100 to 1**.
@@ -62,6 +66,30 @@ flutter run -d macos               # in apps/countdown_flutter
 - **Between-rounds state**: after all hands are empty and `playCard` returns `valid`, `Room` resets `phase` to `lobby`. The Flutter `LobbyScreen` detects between-rounds via `roundNumber > 0 && phase == lobby` and shows vote chips instead of the Start Game button.
 - **Per-player hand serialization**: `stateUpdateMsg` takes an optional `localEnginePlayerId`; `_broadcastState` iterates connections individually and passes each player's engine ID so they receive their own card values. Other players' `hand` arrays are always empty.
 - **macOS sandbox**: both `DebugProfile.entitlements` and `Release.entitlements` need `com.apple.security.network.client` for the app to open WebSocket connections. The scaffold only includes `network.server` by default.
+
+## Golden Tests
+
+- **CI (Linux) is the source of truth** for golden PNG files. The `update-goldens.yml` workflow generates and commits them.
+- **Never commit local goldens.** Font rendering differs across platforms (macOS vs Linux), so local goldens won't match CI.
+- Run `flutter test --update-goldens` locally to generate goldens for your environment, but use `assume-unchanged` to keep them out of git:
+  ```bash
+  git ls-files apps/countdown_flutter/test/golden/screens/goldens/*.png | xargs git update-index --assume-unchanged
+  ```
+- To re-track them: replace `--assume-unchanged` with `--no-assume-unchanged`.
+- The `approve-goldens.yml` workflow lets reviewers accept golden changes on a PR by commenting `/approve-goldens`.
+- When creating golden test files, never gitignore them if CI needs to commit/update them. Use `git update-index --assume-unchanged` for local-only ignoring.
+
+## CI/CD
+
+When modifying CI/CD pipelines or GitHub Actions workflows, always run a local validation step (e.g., `act` or dry-run) before pushing. Double-check image paths, permissions (gcr.io vs Artifact Registry), and yaml syntax.
+
+## Testing
+
+After implementing game logic or server changes, verify the full multiplayer flow end-to-end (player join → hand dealt → play → game over) before considering the task complete. Watch for race conditions in WebSocket broadcasts and empty hand bugs.
+
+## Flutter Web Testing
+
+For Flutter web Playwright tests: GestureDetector creates `role='group'`, not `'button'`. Use `Semantics` widget wrapping for clickable elements. Expect CanvasKit renderer to take extra time loading — add appropriate waits.
 
 ## Known Gotchas
 

@@ -7,7 +7,6 @@ import 'package:countdown_flutter/src/screens/home_screen.dart';
 import 'package:countdown_flutter/src/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 // ── Test doubles ──────────────────────────────────────────────────────────
 
@@ -66,65 +65,40 @@ Widget _wrapWithTheme(Widget child, GameClient client) => MaterialApp(
   home: ListenableBuilder(listenable: client, builder: (_, _) => child),
 );
 
-/// Suppresses GoogleFonts async loading errors in test zone.
-void _suppressGoogleFontsErrors() {
-  final originalOnError = FlutterError.onError;
-  FlutterError.onError = (details) {
-    if (details.toString().contains('google_fonts') ||
-        details.toString().contains('GoogleFonts') ||
-        details.toString().contains('PlayfairDisplay')) {
-      return; // suppress
-    }
-    originalOnError?.call(details);
-  };
-  addTearDown(() => FlutterError.onError = originalOnError);
-}
-
 void main() {
-  // Prevent real HTTP fetches; font family strings are set synchronously.
-  GoogleFonts.config.allowRuntimeFetching = false;
-
   group('countdownTheme()', () {
-    // Using testWidgets so the binding catches async GoogleFonts errors.
     testWidgets('T1. uses dark brightness', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       expect(theme.colorScheme.brightness, Brightness.dark);
     });
 
     testWidgets('T2. scaffold background is deep navy', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       expect(theme.scaffoldBackgroundColor, kBackgroundColor);
     });
 
     testWidgets('T3. primary color is warm amber/gold', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       expect(theme.colorScheme.primary, kAccentColor);
     });
 
     testWidgets('T4. Material 3 is enabled', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       expect(theme.useMaterial3, isTrue);
     });
 
     testWidgets('T5. card theme uses cream/off-white color', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       expect(theme.cardTheme.color, kCardColor);
     });
 
     testWidgets('T6. card theme has rounded corners', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       final shape = theme.cardTheme.shape as RoundedRectangleBorder;
       expect(shape.borderRadius, BorderRadius.circular(12));
     });
 
     testWidgets('T7. app bar uses Playfair Display font', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       expect(
         theme.appBarTheme.titleTextStyle?.fontFamily,
@@ -133,7 +107,6 @@ void main() {
     });
 
     testWidgets('T8. dialog title uses Playfair Display font', (tester) async {
-      _suppressGoogleFontsErrors();
       final theme = countdownTheme();
       expect(
         theme.dialogTheme.titleTextStyle?.fontFamily,
@@ -144,7 +117,6 @@ void main() {
 
   group('HomeScreen with dark theme', () {
     testWidgets('T9. scaffold uses dark background color', (tester) async {
-      _suppressGoogleFontsErrors();
       final client = GameClient();
       await tester.pumpWidget(
         _wrapWithTheme(HomeScreen(client: client), client),
@@ -157,7 +129,6 @@ void main() {
     });
 
     testWidgets('T10. title uses font family from appBarTheme', (tester) async {
-      _suppressGoogleFontsErrors();
       final client = GameClient();
       await tester.pumpWidget(
         _wrapWithTheme(HomeScreen(client: client), client),
@@ -172,7 +143,6 @@ void main() {
 
   group('GameScreen card styling with dark theme', () {
     testWidgets('T11. Card widgets use cream color from theme', (tester) async {
-      _suppressGoogleFontsErrors();
       final client = GameClient();
       final (_, ctrl) = _connectFake(client);
 
@@ -219,7 +189,6 @@ void main() {
     testWidgets('T12. card number text uses dark color for contrast', (
       tester,
     ) async {
-      _suppressGoogleFontsErrors();
       final client = GameClient();
       final (_, ctrl) = _connectFake(client);
 

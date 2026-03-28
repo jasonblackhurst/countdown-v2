@@ -49,7 +49,7 @@ export async function createRoom(page: Page, name: string = 'Host'): Promise<str
   const nameInput = page.locator('input[aria-label="Your name"]');
   await nameInput.waitFor({ state: 'visible', timeout: 5_000 });
   await nameInput.click();
-  await nameInput.pressSequentially(name, { delay: 100 });
+  await nameInput.fill(name);
 
   await page.getByRole('button', { name: 'Create' }).click();
 
@@ -71,12 +71,12 @@ export async function joinRoom(page: Page, roomCode: string, name: string): Prom
   const nameInput = page.locator('input[aria-label="Your name"]');
   await nameInput.waitFor({ state: 'visible', timeout: 5_000 });
   await nameInput.click();
-  await nameInput.pressSequentially(name, { delay: 100 });
+  await nameInput.fill(name);
 
   const codeInput = page.locator('input[aria-label="Room code"]');
   await codeInput.waitFor({ state: 'visible', timeout: 5_000 });
   await codeInput.click();
-  await codeInput.pressSequentially(roomCode, { delay: 100 });
+  await codeInput.fill(roomCode);
 
   await page.getByRole('button', { name: 'Join', exact: true }).click();
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Deep navy/charcoal background for the app.
 const kBackgroundColor = Color(0xFF1A1A2E);
@@ -39,7 +38,8 @@ ThemeData countdownTheme() {
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: GoogleFonts.playfairDisplay(
+      titleTextStyle: TextStyle(
+        fontFamily: 'PlayfairDisplay',
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: Colors.white,
@@ -83,7 +83,8 @@ ThemeData countdownTheme() {
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: kSurfaceColor,
-      titleTextStyle: GoogleFonts.playfairDisplay(
+      titleTextStyle: TextStyle(
+        fontFamily: 'PlayfairDisplay',
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: Colors.white,

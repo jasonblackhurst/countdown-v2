@@ -15,11 +15,11 @@ test('joining with an invalid room code shows an error', async ({ browser }) => 
 
   const nameInput = alice.page.locator('input[aria-label="Your name"]');
   await nameInput.waitFor({ state: 'visible', timeout: 5_000 });
-  await nameInput.pressSequentially('Alice', { delay: 100 });
+  await nameInput.fill('Alice');
 
   const codeInput = alice.page.locator('input[aria-label="Room code"]');
   await codeInput.waitFor({ state: 'visible', timeout: 5_000 });
-  await codeInput.pressSequentially('ZZZZ', { delay: 100 });
+  await codeInput.fill('ZZZZ');
 
   await alice.page.getByRole('button', { name: 'Join', exact: true }).click();
 
@@ -46,11 +46,11 @@ test('joining after game started shows an error', async ({ browser }) => {
 
   const nameInput = charlie.page.locator('input[aria-label="Your name"]');
   await nameInput.waitFor({ state: 'visible', timeout: 5_000 });
-  await nameInput.pressSequentially('Charlie', { delay: 100 });
+  await nameInput.fill('Charlie');
 
   const codeInput = charlie.page.locator('input[aria-label="Room code"]');
   await codeInput.waitFor({ state: 'visible', timeout: 5_000 });
-  await codeInput.pressSequentially(roomCode, { delay: 100 });
+  await codeInput.fill(roomCode);
 
   await charlie.page.getByRole('button', { name: 'Join', exact: true }).click();
 
